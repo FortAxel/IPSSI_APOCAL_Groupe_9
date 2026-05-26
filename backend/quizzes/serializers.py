@@ -10,8 +10,17 @@ class QuestionSerializer(serializers.ModelSerializer):
         fields = ["index", "prompt", "options", "correct_index"]
 
 
+class QuestionPublicSerializer(serializers.ModelSerializer):
+    """Version sans la bonne réponse — pour exposer le quiz à l'étudiant
+    sans tricher (utilisée par K3 frontend si besoin)."""
+
+    class Meta:
+        model = Question
+        fields = ["index", "prompt", "options"]
+
+
 class QuizSerializer(serializers.ModelSerializer):
-    """Renvoie un quiz complet avec ses 10 questions."""
+    """Renvoie un quiz complet avec ses 10 questions (incluant correct_index)."""
 
     questions = QuestionSerializer(many=True, read_only=True)
 
@@ -32,3 +41,28 @@ class QuizSummarySerializer(serializers.ModelSerializer):
 
     def get_nb_questions(self, obj: Quiz) -> int:
         return obj.questions.count()
+
+
+class AnswerItemSerializer(serializers.Serializer):
+    """Une réponse fournie par l'utilisateur."""
+
+    index = serializers.IntegerField(min_value=1, max_value=10)
+    selected_index = serializers.IntegerField(min_value=0, max_value=3)
+
+
+class SubmitAnswersSerializer(serializers.Serializer):
+    """POST /api/quizzes/<id>/answer/ — 10 réponses attendues."""
+
+    answers = AnswerItemSerializer(many=True)
+
+    def validate_answers(self, value):
+        if len(value) != 10:
+            raise serializers.ValidationError(
+                f"10 réponses attendues, {len(value)} reçues."
+            )
+        indices = sorted(a["index"] for a in value)
+        if indices != list(range(1, 11)):
+            raise serializers.ValidationError(
+                "Les indices doivent couvrir 1..10 sans doublon."
+            )
+        return value

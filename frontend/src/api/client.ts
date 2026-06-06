@@ -7,6 +7,10 @@
  */
 import axios, { AxiosError, type AxiosInstance } from 'axios';
 
+// Vite remplace import.meta.env.VITE_API_BASE_URL au BUILD (ou au démarrage du
+// dev-server), pas au runtime. En dev (npm run dev), la valeur vient du .env via
+// docker compose. Pour un build de prod, passez VITE_API_BASE_URL en ARG/ENV au
+// moment du docker build, sinon c'est le fallback ci-dessous qui est figé.
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api';
 const TOKEN_KEY = 'apocal_token';
 

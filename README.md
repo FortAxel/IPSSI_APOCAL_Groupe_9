@@ -118,6 +118,36 @@ Option **rapide** (`--fast` / `-Fast`) — recrée sans reconstruire les images 
 
 ---
 
+## 📧 Email (Brevo)
+
+L'application envoie des emails (à venir : validation de compte, réinitialisation
+de mot de passe). Le backend bascule **automatiquement** :
+
+- **Sans clé Brevo (défaut dev)** → backend « console » : les emails s'affichent
+  dans les **logs du backend**. Idéal pour tester sans compte Brevo ni adresse réelle.
+- **Avec une clé SMTP Brevo** → envoi de **vrais emails**.
+
+### Configurer Brevo (envoi réel)
+
+1. Créez un compte sur [brevo.com](https://www.brevo.com)
+2. Récupérez votre **clé SMTP** (≠ clé API v3) : <https://app.brevo.com/settings/keys/smtp>
+3. Dans `.env` :
+   ```bash
+   BREVO_SMTP_KEY=xsmtpsib-...
+   BREVO_SMTP_LOGIN=votre-email-de-compte@exemple.com
+   DEFAULT_FROM_EMAIL=EduTutor IA <no-reply@votre-domaine.fr>
+   ```
+4. Redéployez : `bash scripts/redeploy.sh --fast` (ou `.ps1 -Fast` sous Windows)
+
+### Tester l'envoi
+
+```bash
+docker exec apocalipssi-2026-backend python manage.py send_test_email vous@example.com
+```
+En mode console, l'email s'affiche dans la sortie ; avec Brevo, il part réellement.
+
+---
+
 ## 📐 Périmètre attendu (rappel APOCAL'IPSSI)
 
 ### MVP must-have — Release 1 (mercredi soir)

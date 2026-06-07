@@ -231,3 +231,37 @@ OPENROUTER_MODEL   = config("OPENROUTER_MODEL",   default="meta-llama/llama-3.1-
 
 # Délai max (secondes) pour les API cloud, bien plus rapides qu'un modèle local sur CPU.
 LLM_API_TIMEOUT = config("LLM_API_TIMEOUT", default=60, cast=int)
+
+# ----------------------------------------------------------------------------
+# Email (Brevo en production, console en développement)
+# ----------------------------------------------------------------------------
+# [Note pédagogique] Django envoie les emails via un « backend » configurable.
+# Stratégie ici (bascule automatique) :
+#   - Si une clé SMTP Brevo est fournie (.env) -> on envoie de VRAIS emails via
+#     le relais SMTP de Brevo (smtp-relay.brevo.com).
+#   - Sinon (dev) -> backend "console" : l'email s'affiche dans les LOGS du
+#     backend. On peut ainsi tester tout le flux (validation de compte, reset
+#     password du Lot 3) SANS compte Brevo ni adresse email réelle.
+# Brevo distingue la « clé API v3 » et la « clé SMTP » : pour l'envoi SMTP,
+# utilisez la clé SMTP (https://app.brevo.com/settings/keys/smtp).
+BREVO_SMTP_KEY = config("BREVO_SMTP_KEY", default="")
+if BREVO_SMTP_KEY:
+    EMAIL_BACKEND       = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST          = config("BREVO_SMTP_HOST",  default="smtp-relay.brevo.com")
+    EMAIL_PORT          = config("BREVO_SMTP_PORT",  default=587, cast=int)
+    EMAIL_HOST_USER     = config("BREVO_SMTP_LOGIN", default="")
+    EMAIL_HOST_PASSWORD = BREVO_SMTP_KEY
+    EMAIL_USE_TLS       = True
+else:
+    # Fallback dev : aucun email réel envoyé, tout s'affiche dans les logs.
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Adresse expéditeur par défaut. En prod, ce doit être un expéditeur VALIDÉ
+# dans Brevo (sinon les emails sont rejetés).
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL", default="EduTutor IA <no-reply@edututor.local>"
+)
+
+# URL publique du frontend, utilisée pour construire les liens cliquables dans
+# les emails (validation de compte, réinitialisation de mot de passe — Lot 3).
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")

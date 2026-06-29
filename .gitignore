@@ -94,3 +94,6 @@ docs/etude-avant-projet/prompts/
 # --- Tests ---
 coverage/
 .nyc_output/
+
+
+.~lock*

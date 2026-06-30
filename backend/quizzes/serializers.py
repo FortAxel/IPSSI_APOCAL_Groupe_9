@@ -52,7 +52,7 @@ class AnswerItemSerializer(serializers.Serializer):
 
 
 class SubmitAnswersSerializer(serializers.Serializer):
-    """POST /api/quizzes/<id>/answer/ — 10 réponses attendues."""
+    """POST /api/quizzes/<id>/answer/ — 10 réponses attendues (T-04.2)."""
 
     answers = AnswerItemSerializer(many=True)
 

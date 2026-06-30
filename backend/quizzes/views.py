@@ -123,7 +123,7 @@ class GenerateQuizView(APIView):
 
 
 class AnswerQuizView(APIView):
-    """Reçoit 10 réponses, calcule le score, met à jour le quiz."""
+    """Reçoit 10 réponses, calcule le score, persiste le résultat (T-04.2)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -132,7 +132,8 @@ class AnswerQuizView(APIView):
         responses={200: OpenApiResponse(description="{ score, total, details }")},
         description=(
             "Soumet les 10 réponses et reçoit le détail de la correction. "
-            "Le score est persisté sur le quiz."
+            "Chaque `selected_index` est enregistré sur la question ; le score /10 "
+            "est persisté sur le quiz."
         ),
     )
     def post(self, request, pk: int):
@@ -142,7 +143,6 @@ class AnswerQuizView(APIView):
         serializer.is_valid(raise_exception=True)
         answers = serializer.validated_data["answers"]
 
-        # Index pour lookup rapide
         questions_by_idx = {q.index: q for q in quiz.questions.all()}
         if len(questions_by_idx) != 10:
             return Response(
@@ -152,25 +152,25 @@ class AnswerQuizView(APIView):
 
         details = []
         score = 0
-        for ans in answers:
-            q = questions_by_idx[ans["index"]]
-            correct = q.correct_index == ans["selected_index"]
-            if correct:
-                score += 1
-            # [Lot 6] On mémorise la réponse choisie pour la révision des erreurs.
-            q.selected_index = ans["selected_index"]
-            q.save(update_fields=["selected_index"])
-            details.append(
-                {
-                    "index": ans["index"],
-                    "selected_index": ans["selected_index"],
-                    "correct_index": q.correct_index,
-                    "correct": correct,
-                }
-            )
+        with transaction.atomic():
+            for ans in answers:
+                q = questions_by_idx[ans["index"]]
+                correct = q.correct_index == ans["selected_index"]
+                if correct:
+                    score += 1
+                q.selected_index = ans["selected_index"]
+                q.save(update_fields=["selected_index"])
+                details.append(
+                    {
+                        "index": ans["index"],
+                        "selected_index": ans["selected_index"],
+                        "correct_index": q.correct_index,
+                        "correct": correct,
+                    }
+                )
 
-        quiz.score = score
-        quiz.save(update_fields=["score", "updated_at"])
+            quiz.score = score
+            quiz.save(update_fields=["score", "updated_at"])
 
         return Response(
             {

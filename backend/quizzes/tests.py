@@ -142,7 +142,7 @@ def test_generate_quiz_requires_auth():
     assert response.status_code in (401, 403)
 
 
-# --- K2 : answer endpoint ---
+# --- T-04.2 : answer endpoint ---
 
 
 def test_answer_all_correct(auth_client, sample_quiz):
@@ -158,6 +158,24 @@ def test_answer_all_correct(auth_client, sample_quiz):
     assert all(d["correct"] for d in response.data["details"])
     sample_quiz.refresh_from_db()
     assert sample_quiz.score == 10
+    for q in sample_quiz.questions.all():
+        assert q.selected_index == 0
+
+
+def test_answer_persists_wrong_selected_index(auth_client, sample_quiz):
+    """US-04 : chaque réponse incorrecte est enregistrée avec son statut."""
+    response = auth_client.post(
+        f"/api/quizzes/{sample_quiz.id}/answer/",
+        {"answers": [{"index": 1, "selected_index": 2}] + [
+            {"index": i, "selected_index": 0} for i in range(2, 11)
+        ]},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.data["details"][0]["correct"] is False
+    q1 = sample_quiz.questions.get(index=1)
+    q1.refresh_from_db()
+    assert q1.selected_index == 2
 
 
 def test_answer_all_wrong(auth_client, sample_quiz):
@@ -186,6 +204,17 @@ def test_answer_requires_10(auth_client, sample_quiz):
     response = auth_client.post(
         f"/api/quizzes/{sample_quiz.id}/answer/",
         {"answers": [{"index": 1, "selected_index": 0}]},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
+def test_answer_rejects_duplicate_index(auth_client, sample_quiz):
+    response = auth_client.post(
+        f"/api/quizzes/{sample_quiz.id}/answer/",
+        {
+            "answers": [{"index": 1, "selected_index": 0}] * 10,
+        },
         format="json",
     )
     assert response.status_code == 400

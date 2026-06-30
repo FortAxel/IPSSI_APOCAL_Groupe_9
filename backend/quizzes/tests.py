@@ -200,6 +200,27 @@ def test_answer_partial(auth_client, sample_quiz):
     assert response.data["score"] == 5
 
 
+def test_answer_returns_details_with_score_and_persistence(auth_client, sample_quiz):
+    response = auth_client.post(
+        f"/api/quizzes/{sample_quiz.id}/answer/",
+        {
+            "answers": [
+                {"index": 1, "selected_index": 2},
+                *[{"index": i, "selected_index": 0} for i in range(2, 11)],
+            ]
+        },
+        format="json",
+    )
+    assert response.status_code == 200, response.data
+    assert response.data["score"] == 9
+    assert response.data["total"] == 10
+    assert len(response.data["details"]) == 10
+    assert response.data["details"][0]["correct"] is False
+    assert response.data["details"][0]["selected_index"] == 2
+    sample_quiz.refresh_from_db()
+    assert sample_quiz.score == 9
+
+
 def test_answer_requires_10(auth_client, sample_quiz):
     response = auth_client.post(
         f"/api/quizzes/{sample_quiz.id}/answer/",

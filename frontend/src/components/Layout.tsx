@@ -38,7 +38,7 @@ export default function Layout() {
           <nav className="flex items-center gap-4 text-sm">
             {user ? (
               <>
-                <Link to="/quiz" className="text-slate-700 hover:text-indigo-600">
+                <Link to="/upload" className="text-slate-700 hover:text-indigo-600">
                   Nouveau quiz
                 </Link>
                 <Link

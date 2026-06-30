@@ -1,8 +1,11 @@
-"""Tests pour l'app quizzes — K1 (list/detail) + K2 (answer)."""
+"""Tests pour l'app quizzes — K1 (list/detail) + K2 (answer) + T-03.3 (generate)."""
 
 import pytest
 from django.contrib.auth.models import User
+from django.test import override_settings
 from rest_framework.test import APIClient
+
+from courses.models import Course
 
 from .models import Question, Quiz
 
@@ -73,6 +76,70 @@ def test_quiz_detail_404_for_other_users_quiz(auth_client, other_user):
     other_quiz = Quiz.objects.create(user=other_user, title="Privé", source_text="...")
     response = auth_client.get(f"/api/quizzes/{other_quiz.id}/")
     assert response.status_code == 404
+
+
+# --- T-03.3 : generate endpoint ---
+
+
+@pytest.fixture
+def sample_course(user) -> Course:
+    return Course.objects.create(
+        user=user,
+        title="Droit civil",
+        source_text="Article 1101 du code civil. " * 20,
+    )
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_from_course(auth_client, sample_course):
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id},
+        format="json",
+    )
+    assert response.status_code == 201, response.data
+    assert response.data["title"] == "Droit civil"
+    assert len(response.data["questions"]) == 10
+    assert Quiz.objects.filter(title="Droit civil").count() == 1
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_rejects_short_course(auth_client, user):
+    course = Course.objects.create(
+        user=user,
+        title="Trop court",
+        source_text="Court",
+    )
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": course.id},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_404_for_other_users_course(auth_client, other_user):
+    course = Course.objects.create(
+        user=other_user,
+        title="Privé",
+        source_text="Lorem ipsum dolor sit amet. " * 20,
+    )
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": course.id},
+        format="json",
+    )
+    assert response.status_code == 404
+
+
+def test_generate_quiz_requires_auth():
+    response = APIClient().post(
+        "/api/quizzes/generate/",
+        {"course_id": 1},
+        format="json",
+    )
+    assert response.status_code in (401, 403)
 
 
 # --- K2 : answer endpoint ---

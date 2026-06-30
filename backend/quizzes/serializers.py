@@ -63,3 +63,9 @@ class SubmitAnswersSerializer(serializers.Serializer):
         if indices != list(range(1, 11)):
             raise serializers.ValidationError("Les indices doivent couvrir 1..10 sans doublon.")
         return value
+
+
+class GenerateQuizSerializer(serializers.Serializer):
+    """Input pour POST /api/quizzes/generate/ — génère 10 QCM depuis un cours déposé."""
+
+    course_id = serializers.IntegerField(min_value=1)

@@ -171,6 +171,27 @@ make reset-db      # ⚠️ Supprime + recrée la DB
 
 ---
 
+## Upload de cours
+
+La page `/upload` permet de creer un quiz a partir de deux sources :
+
+- un texte colle de 200 caracteres minimum ;
+- un fichier PDF de 5 Mo maximum, avec du texte extractible.
+
+L'API appelee par le frontend est `POST /api/llm/generate-quiz/`. La requete est
+envoyee en `multipart/form-data` avec `title`, puis soit `source_text`, soit
+`pdf`. L'utilisateur doit etre authentifie, car le quiz genere est sauvegarde et
+rattache a son compte.
+
+Tests utiles pour valider cette fonctionnalite :
+
+```bash
+cd backend && $env:DJANGO_SETTINGS_MODULE="apocal.test_settings"; .\.venv\Scripts\python.exe -m pytest llm
+cd frontend && npm test -- UploadPage
+```
+
+---
+
 ## 🔄 Redéployer après une modification
 
 Après avoir modifié du code ou le `.env`, régénérez les conteneurs avec le

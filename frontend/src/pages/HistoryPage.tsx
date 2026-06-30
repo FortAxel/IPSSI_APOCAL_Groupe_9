@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listQuizzes, type QuizSummary } from '@/api/quizzes';
+import { getApiErrorMessage } from '@/api/errors';
 
 export default function HistoryPage() {
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
@@ -10,12 +11,26 @@ export default function HistoryPage() {
   useEffect(() => {
     listQuizzes()
       .then((res) => setQuizzes(res.results))
-      .catch(() => setError("Impossible de charger l'historique."))
+      .catch((err) => setError(getApiErrorMessage(err, "Impossible de charger l'historique.")))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-slate-500">Chargement…</p>;
-  if (error) return <p className="text-rose-600">{error}</p>;
+  if (loading)
+    return (
+      <div className="text-center py-12">
+        <span className="animate-spin inline-block text-2xl">⏳</span>
+        <p className="text-slate-500 mt-3">Chargement de l'historique…</p>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="max-w-3xl mx-auto">
+        <div className="p-3 bg-rose-50 border-l-4 border-rose-500 text-sm text-rose-900 rounded">
+          {error}
+        </div>
+      </div>
+    );
 
   return (
     <div className="space-y-4">
@@ -44,16 +59,12 @@ export default function HistoryPage() {
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
           {quizzes.map((q) => (
-            <Link
-              key={q.id}
-              to={`/quiz/${q.id}`}
-              className="card hover:border-indigo-500 hover:shadow-md transition"
-            >
+            <div key={q.id} className="card flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-mono text-xs text-slate-500">
                   #{q.id} · {new Date(q.created_at).toLocaleDateString('fr-FR')}
                 </span>
-                {q.score !== null && (
+                {q.score !== null ? (
                   <span
                     className={`px-2 py-0.5 rounded font-mono text-sm font-bold ${
                       q.score >= 7
@@ -65,16 +76,20 @@ export default function HistoryPage() {
                   >
                     {q.score} / 10
                   </span>
-                )}
-                {q.score === null && (
+                ) : (
                   <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs font-mono">
                     pas encore passé
                   </span>
                 )}
               </div>
               <h3 className="font-semibold text-slate-900 mb-1">{q.title}</h3>
-              <p className="text-sm text-slate-500">{q.nb_questions} questions</p>
-            </Link>
+              <p className="text-sm text-slate-500 mb-4">{q.nb_questions} questions</p>
+              <div className="mt-auto flex justify-end">
+                <Link to={`/quiz/${q.id}`} className="btn-primary text-sm">
+                  🔄 Refaire
+                </Link>
+              </div>
+            </div>
           ))}
         </div>
       )}

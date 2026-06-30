@@ -46,6 +46,15 @@ def test_signup_requires_email(client):
     assert response.status_code == 400
 
 
+def test_signup_rejects_short_password(client):
+    response = client.post(
+        "/api/accounts/signup/",
+        {"email": "bob@test.com", "password": "court"},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
 def test_login_returns_token(client, user):
     response = client.post(
         "/api/accounts/login/",

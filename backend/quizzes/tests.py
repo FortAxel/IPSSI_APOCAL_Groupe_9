@@ -67,6 +67,43 @@ def test_quiz_list_does_not_leak_other_users_quizzes(auth_client, other_user):
     assert response.data["count"] == 0
 
 
+# --- T-06.1 : GET /api/quizzes/ paginé + tri date desc ---
+
+
+def test_quiz_list_summary_fields(auth_client, sample_quiz):
+    response = auth_client.get("/api/quizzes/")
+    assert response.status_code == 200
+    item = response.data["results"][0]
+    assert item["title"] == "Cours de test"
+    assert item["score"] is None
+    assert "created_at" in item
+    assert item["nb_questions"] == 10
+
+
+def test_quiz_list_sorted_by_created_at_desc(auth_client, user):
+    older = Quiz.objects.create(
+        user=user, title="Ancien", source_text="...", score=5
+    )
+    time.sleep(0.01)
+    newer = Quiz.objects.create(
+        user=user, title="Récent", source_text="...", score=8
+    )
+    response = auth_client.get("/api/quizzes/")
+    titles = [q["title"] for q in response.data["results"]]
+    assert titles.index("Récent") < titles.index("Ancien")
+
+
+def test_quiz_list_pagination(auth_client, user):
+    for i in range(21):
+        Quiz.objects.create(user=user, title=f"Quiz {i}", source_text="...")
+    response = auth_client.get("/api/quizzes/")
+    assert response.status_code == 200
+    assert response.data["count"] == 21
+    assert len(response.data["results"]) == 20
+    assert response.data["next"] is not None
+    assert response.data["previous"] is None
+
+
 def test_quiz_detail(auth_client, sample_quiz):
     response = auth_client.get(f"/api/quizzes/{sample_quiz.id}/")
     assert response.status_code == 200

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listQuizzes, type QuizSummary } from '@/api/quizzes';
+import { getApiErrorMessage } from '@/api/errors';
 
 export default function HistoryPage() {
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
@@ -10,12 +11,25 @@ export default function HistoryPage() {
   useEffect(() => {
     listQuizzes()
       .then((res) => setQuizzes(res.results))
-      .catch(() => setError("Impossible de charger l'historique."))
+      .catch((err) => setError(getApiErrorMessage(err, "Impossible de charger l'historique.")))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-slate-500">Chargement…</p>;
-  if (error) return <p className="text-rose-600">{error}</p>;
+  if (loading)
+    return (
+      <div className="text-center py-12">
+        <span className="animate-spin text-2xl">⏳</span>
+        <p className="text-slate-500 mt-3">Chargement de l'historique…</p>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="max-w-3xl mx-auto">
+        <div className="p-3 bg-rose-50 border-l-4 border-rose-500 text-sm text-rose-900 rounded">
+          {error}
+        </div>
+      </div>
+    );
 
   return (
     <div className="space-y-4">

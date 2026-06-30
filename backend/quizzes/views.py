@@ -86,7 +86,7 @@ class GenerateQuizView(APIView):
             user=request.user,
         )
 
-        source_text = course.source_text.strip()
+        source_text = course.content.strip()
         if len(source_text) < 200:
             return Response(
                 {"detail": "Le cours ne contient pas assez de texte (≥ 200 caractères)."},

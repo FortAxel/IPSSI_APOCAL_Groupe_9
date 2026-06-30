@@ -21,7 +21,7 @@ export default function HomePage() {
         <div className="mt-8 flex flex-wrap gap-3 justify-center">
           {user ? (
             <>
-              <Link to="/upload" className="btn-primary px-6 py-3 text-base">
+              <Link to="/quiz" className="btn-primary px-6 py-3 text-base">
                 Créer un quiz
               </Link>
               <Link to="/history" className="btn-secondary px-6 py-3 text-base">

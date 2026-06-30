@@ -1,5 +1,6 @@
 """Tests pour l'app quizzes — K1 (list/detail) + K2 (answer) + T-03.3 (generate)."""
 
+import time
 import pytest
 from django.contrib.auth.models import User
 from django.test import override_settings
@@ -86,7 +87,7 @@ def sample_course(user) -> Course:
     return Course.objects.create(
         user=user,
         title="Droit civil",
-        source_text="Article 1101 du code civil. " * 20,
+        content="Article 1101 du code civil. " * 20,
     )
 
 
@@ -104,11 +105,24 @@ def test_generate_quiz_from_course(auth_client, sample_course):
 
 
 @override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_performance_under_60_seconds(auth_client, sample_course):
+    start = time.perf_counter()
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id},
+        format="json",
+    )
+    elapsed = time.perf_counter() - start
+    assert response.status_code == 201, response.data
+    assert elapsed < 60, f"Generation took trop longtemps : {elapsed:.2f}s"
+
+
+@override_settings(LLM_BACKEND="mock")
 def test_generate_quiz_rejects_short_course(auth_client, user):
     course = Course.objects.create(
         user=user,
         title="Trop court",
-        source_text="Court",
+        content="Court",
     )
     response = auth_client.post(
         "/api/quizzes/generate/",
@@ -123,7 +137,7 @@ def test_generate_quiz_404_for_other_users_course(auth_client, other_user):
     course = Course.objects.create(
         user=other_user,
         title="Privé",
-        source_text="Lorem ipsum dolor sit amet. " * 20,
+        content="Lorem ipsum dolor sit amet. " * 20,
     )
     response = auth_client.post(
         "/api/quizzes/generate/",

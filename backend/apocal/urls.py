@@ -9,6 +9,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from accounts.views import SignupView
 from administration.views import PublicSiteConfigView
 
 
@@ -22,6 +23,8 @@ urlpatterns = [
     path("health/", health, name="health"),
     # Admin Django (utile en dev)
     path("admin/", admin.site.urls),
+    # Inscription directe (User story : créer un compte email/mdp)
+    path("api/signup/", SignupView.as_view(), name="signup"),
     # API — apps métier
     path("api/accounts/", include("accounts.urls")),
     path("api/llm/", include("llm.urls")),

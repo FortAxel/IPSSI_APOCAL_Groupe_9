@@ -53,7 +53,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-slate-900">Tableau de bord</h1>
           <p className="text-slate-500 text-sm">Votre progression sur EduTutor IA.</p>
         </div>
-        <Link to="/upload" className="btn-primary">
+        <Link to="/quiz" className="btn-primary">
           + Nouveau quiz
         </Link>
       </div>
@@ -64,7 +64,7 @@ export default function DashboardPage() {
           <p className="text-slate-600 mb-4">
             Passez votre premier quiz pour voir vos statistiques apparaître ici.
           </p>
-          <Link to="/upload" className="btn-primary">
+          <Link to="/quiz" className="btn-primary">
             Créer un quiz
           </Link>
         </div>

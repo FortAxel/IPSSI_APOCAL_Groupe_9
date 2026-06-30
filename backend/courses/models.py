@@ -1,3 +1,5 @@
+"""Modèle Course — support de cours déposé par l'utilisateur (F2)."""
+
 from django.conf import settings
 from django.db import models
 
@@ -29,6 +31,9 @@ class Course(models.Model):
         ordering = ["-created_at"]
         verbose_name = "Cours"
         verbose_name_plural = "Cours"
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+        ]
 
     def __str__(self) -> str:
         return f"{self.title} — {self.user.username}"

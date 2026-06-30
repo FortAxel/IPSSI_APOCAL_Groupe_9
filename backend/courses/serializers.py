@@ -6,6 +6,8 @@ from .models import Course
 
 
 class CourseSerializer(serializers.ModelSerializer):
+    source_text = serializers.CharField(source="content")
+
     class Meta:
         model = Course
         fields = ["id", "title", "source_text", "created_at"]

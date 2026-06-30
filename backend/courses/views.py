@@ -43,6 +43,6 @@ class CreateCourseView(APIView):
         course = Course.objects.create(
             user=request.user,
             title=title,
-            source_text=source_text,
+            content=source_text,
         )
         return Response(CourseSerializer(course).data, status=status.HTTP_201_CREATED)

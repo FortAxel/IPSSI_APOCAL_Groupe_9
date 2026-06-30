@@ -10,11 +10,39 @@ export default function UploadPage() {
   const [pdf, setPdf] = useState<File | null>(null);
   const [sourceText, setSourceText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave' && !e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setError('Seuls les fichiers PDF sont acceptés.');
+      return;
+    }
+    setPdf(file);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (mode === 'pdf' && !pdf) {
+      setError('Veuillez sélectionner un fichier PDF.');
+      return;
+    }
     setLoading(true);
     try {
       const quiz = await generateQuiz({
@@ -93,13 +121,56 @@ export default function UploadPage() {
               className="input"
             />
           ) : (
-            <input
-              type="file"
-              accept=".pdf,application/pdf"
-              required
-              onChange={(e) => setPdf(e.target.files?.[0] ?? null)}
-              className="input"
-            />
+            <div
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                dragActive
+                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950'
+                  : pdf
+                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950'
+                    : 'border-slate-300 dark:border-slate-600'
+              }`}
+            >
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(e) => setPdf(e.target.files?.[0] ?? null)}
+                className="hidden"
+                id="pdf-upload"
+              />
+              {pdf ? (
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-2xl">📄</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {pdf.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPdf(null)}
+                    className="text-xs text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 font-medium"
+                  >
+                    ✕ Retirer
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor="pdf-upload"
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  <span className="text-2xl">📤</span>
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                    Glissez-déposez un PDF ici ou{' '}
+                    <span className="text-indigo-600 dark:text-indigo-400 underline">
+                      cliquez pour parcourir
+                    </span>
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">PDF uniquement</span>
+                </label>
+              )}
+            </div>
           )}
           {mode === 'text' && (
             <p className="text-xs text-slate-500 mt-1">

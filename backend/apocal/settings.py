@@ -54,10 +54,10 @@ INSTALLED_APPS = [
     "drf_spectacular",
     # Apps locales
     "accounts",
-    "courses",
     "llm",
     "quizzes",
     "administration",
+    "courses",
 ]
 
 MIDDLEWARE = [

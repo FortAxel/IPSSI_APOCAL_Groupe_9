@@ -11,9 +11,18 @@ class Course(models.Model):
         related_name="courses",
         help_text="Propriétaire du cours.",
     )
-    title = models.CharField(max_length=200, help_text="Titre du cours.")
-    source_text = models.TextField(
-        help_text="Texte source extrait du PDF ou saisi par l'utilisateur.",
+    title = models.CharField(
+        max_length=200,
+        help_text="Titre du cours.",
+    )
+    content = models.TextField(
+        help_text="Contenu textuel du cours (saisie directe ou extrait PDF).",
+    )
+    source = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Origine du contenu : nom de fichier PDF, URL ou vide si saisie manuelle.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

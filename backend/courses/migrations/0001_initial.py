@@ -28,9 +28,18 @@ class Migration(migrations.Migration):
                 ),
                 ("title", models.CharField(help_text="Titre du cours.", max_length=200)),
                 (
-                    "source_text",
+                    "content",
                     models.TextField(
-                        help_text="Texte source extrait du PDF ou saisi par l'utilisateur.",
+                        help_text="Contenu textuel du cours (saisie directe ou extrait PDF).",
+                    ),
+                ),
+                (
+                    "source",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        help_text="Origine du contenu : nom de fichier PDF, URL ou vide si saisie manuelle.",
+                        max_length=500,
                     ),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),

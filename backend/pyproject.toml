@@ -34,10 +34,10 @@ ignore = ["E501"]  # gérée par black
 DJANGO_SETTINGS_MODULE = "apocal.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "--strict-markers --tb=short -q"
-testpaths = ["accounts", "llm", "quizzes", "administration"]
+testpaths = ["accounts", "courses", "llm", "quizzes", "administration"]
 
 [tool.coverage.run]
-source = ["accounts", "llm", "quizzes", "administration"]
+source = ["accounts", "courses", "llm", "quizzes", "administration"]
 omit = ["*/migrations/*", "*/tests.py", "manage.py"]
 
 [tool.coverage.report]

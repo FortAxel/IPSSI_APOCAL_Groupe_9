@@ -24,6 +24,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # API — apps métier
     path("api/accounts/", include("accounts.urls")),
+    path("api/courses/", include("courses.urls")),
     path("api/llm/", include("llm.urls")),
     path("api/quizzes/", include("quizzes.urls")),
     # API — administration (config site/LLM, users, opérations base)

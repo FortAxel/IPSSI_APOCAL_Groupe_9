@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateQuiz } from '@/api/llm';
 import { getApiErrorMessage } from '@/api/errors';
@@ -12,6 +12,14 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!loading) return;
+    setElapsed(0);
+    const id = setInterval(() => setElapsed((prev) => prev + 1), 1000);
+    return () => clearInterval(id);
+  }, [loading]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -31,6 +39,10 @@ export default function UploadPage() {
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       setError('Seuls les fichiers PDF sont acceptés.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Le fichier est trop volumineux (max 5 Mo).');
       return;
     }
     setPdf(file);
@@ -67,7 +79,16 @@ export default function UploadPage() {
 
       {error && (
         <div className="mb-4 p-3 bg-rose-50 border-l-4 border-rose-500 text-sm text-rose-900 rounded">
-          {error}
+          <p>{error}</p>
+          {!loading && (
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="mt-1 text-xs font-semibold text-rose-700 hover:text-rose-900 underline"
+            >
+              Réessayer
+            </button>
+          )}
         </div>
       )}
 
@@ -137,7 +158,15 @@ export default function UploadPage() {
               <input
                 type="file"
                 accept=".pdf,application/pdf"
-                onChange={(e) => setPdf(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  if (file && file.size > 5 * 1024 * 1024) {
+                    setError('Le fichier est trop volumineux (max 5 Mo).');
+                    setPdf(null);
+                    return;
+                  }
+                  setPdf(file);
+                }}
                 className="hidden"
                 id="pdf-upload"
               />
@@ -182,8 +211,10 @@ export default function UploadPage() {
         <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? (
             <>
-              <span className="animate-spin">⏳</span> Génération en cours… (1 à 5 min sur CPU,
-              patientez)
+              <span className="animate-spin">⏳</span> Génération en cours…
+              {elapsed < 60
+                ? ` (${elapsed} s)`
+                : ` (${Math.floor(elapsed / 60)} min ${elapsed % 60} s)`}
             </>
           ) : (
             <>🚀 Générer le quiz</>

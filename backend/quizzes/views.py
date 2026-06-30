@@ -2,9 +2,11 @@
 Endpoints quizz :
     GET   /api/quizzes/                — historique du user connecté
     GET   /api/quizzes/<id>/           — détail (avec les 10 questions)
+    POST  /api/quizzes/generate/       — génère 10 QCM depuis un cours (T-03.3)
     POST  /api/quizzes/<id>/answer/    — soumet 10 réponses, renvoie le score
 """
 
+from django.db import transaction
 from django.db.models import Avg, Count, F, Max
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
@@ -13,8 +15,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from courses.models import Course
+from llm.services import get_llm_client
+from llm.services.base import LLMError
+
 from .models import Question, Quiz
 from .serializers import (
+    GenerateQuizSerializer,
     QuizSerializer,
     QuizSummarySerializer,
     SubmitAnswersSerializer,
@@ -45,8 +52,78 @@ class QuizDetailView(generics.RetrieveAPIView):
         return Quiz.objects.filter(user=self.request.user)
 
 
+class GenerateQuizView(APIView):
+    """Génère 10 QCM à partir d'un cours déjà déposé (POST /api/courses/)."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=GenerateQuizSerializer,
+        responses={201: QuizSerializer},
+        description=(
+            "Génère 10 QCM via le LLM à partir du texte d'un cours existant. "
+            "Le prompt et la validation JSON sont gérés par llm/services/quiz_prompt.py."
+        ),
+    )
+    def post(self, request):
+        from accounts.models import get_or_create_profile
+        from administration.models import SiteConfig
+
+        if (
+            SiteConfig.load().require_email_verification
+            and not get_or_create_profile(request.user).email_verified
+        ):
+            return Response(
+                {"detail": "Veuillez confirmer votre adresse email avant de générer un quiz."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = GenerateQuizSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        course = get_object_or_404(
+            Course,
+            pk=serializer.validated_data["course_id"],
+            user=request.user,
+        )
+
+        source_text = course.source_text.strip()
+        if len(source_text) < 200:
+            return Response(
+                {"detail": "Le cours ne contient pas assez de texte (≥ 200 caractères)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            questions_data = get_llm_client().generate_quiz(
+                source_text=source_text,
+                title=course.title,
+            )
+        except LLMError as exc:
+            return Response(
+                {"detail": f"Échec génération LLM : {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        with transaction.atomic():
+            quiz = Quiz.objects.create(
+                user=request.user,
+                title=course.title,
+                source_text=source_text,
+            )
+            for i, q in enumerate(questions_data, start=1):
+                Question.objects.create(
+                    quiz=quiz,
+                    index=i,
+                    prompt=q["prompt"],
+                    options=q["options"],
+                    correct_index=q["correct_index"],
+                )
+
+        return Response(QuizSerializer(quiz).data, status=status.HTTP_201_CREATED)
+
+
 class AnswerQuizView(APIView):
-    """Reçoit 10 réponses, calcule le score, met à jour le quiz."""
+    """Reçoit 10 réponses, calcule le score, persiste le résultat (T-04.2)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -55,7 +132,8 @@ class AnswerQuizView(APIView):
         responses={200: OpenApiResponse(description="{ score, total, details }")},
         description=(
             "Soumet les 10 réponses et reçoit le détail de la correction. "
-            "Le score est persisté sur le quiz."
+            "Chaque `selected_index` est enregistré sur la question ; le score /10 "
+            "est persisté sur le quiz."
         ),
     )
     def post(self, request, pk: int):
@@ -65,7 +143,6 @@ class AnswerQuizView(APIView):
         serializer.is_valid(raise_exception=True)
         answers = serializer.validated_data["answers"]
 
-        # Index pour lookup rapide
         questions_by_idx = {q.index: q for q in quiz.questions.all()}
         if len(questions_by_idx) != 10:
             return Response(
@@ -75,25 +152,25 @@ class AnswerQuizView(APIView):
 
         details = []
         score = 0
-        for ans in answers:
-            q = questions_by_idx[ans["index"]]
-            correct = q.correct_index == ans["selected_index"]
-            if correct:
-                score += 1
-            # [Lot 6] On mémorise la réponse choisie pour la révision des erreurs.
-            q.selected_index = ans["selected_index"]
-            q.save(update_fields=["selected_index"])
-            details.append(
-                {
-                    "index": ans["index"],
-                    "selected_index": ans["selected_index"],
-                    "correct_index": q.correct_index,
-                    "correct": correct,
-                }
-            )
+        with transaction.atomic():
+            for ans in answers:
+                q = questions_by_idx[ans["index"]]
+                correct = q.correct_index == ans["selected_index"]
+                if correct:
+                    score += 1
+                q.selected_index = ans["selected_index"]
+                q.save(update_fields=["selected_index"])
+                details.append(
+                    {
+                        "index": ans["index"],
+                        "selected_index": ans["selected_index"],
+                        "correct_index": q.correct_index,
+                        "correct": correct,
+                    }
+                )
 
-        quiz.score = score
-        quiz.save(update_fields=["score", "updated_at"])
+            quiz.score = score
+            quiz.save(update_fields=["score", "updated_at"])
 
         return Response(
             {

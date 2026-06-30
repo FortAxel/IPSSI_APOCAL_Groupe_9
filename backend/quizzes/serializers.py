@@ -52,7 +52,7 @@ class AnswerItemSerializer(serializers.Serializer):
 
 
 class SubmitAnswersSerializer(serializers.Serializer):
-    """POST /api/quizzes/<id>/answer/ — 10 réponses attendues."""
+    """POST /api/quizzes/<id>/answer/ — 10 réponses attendues (T-04.2)."""
 
     answers = AnswerItemSerializer(many=True)
 
@@ -63,3 +63,9 @@ class SubmitAnswersSerializer(serializers.Serializer):
         if indices != list(range(1, 11)):
             raise serializers.ValidationError("Les indices doivent couvrir 1..10 sans doublon.")
         return value
+
+
+class GenerateQuizSerializer(serializers.Serializer):
+    """Input pour POST /api/quizzes/generate/ — génère 10 QCM depuis un cours déposé."""
+
+    course_id = serializers.IntegerField(min_value=1)

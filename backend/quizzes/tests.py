@@ -1,8 +1,11 @@
-"""Tests pour l'app quizzes — K1 (list/detail) + K2 (answer)."""
+"""Tests pour l'app quizzes — K1 (list/detail) + K2 (answer) + T-03.3 (generate)."""
 
 import pytest
 from django.contrib.auth.models import User
+from django.test import override_settings
 from rest_framework.test import APIClient
+
+from courses.models import Course
 
 from .models import Question, Quiz
 
@@ -75,7 +78,71 @@ def test_quiz_detail_404_for_other_users_quiz(auth_client, other_user):
     assert response.status_code == 404
 
 
-# --- K2 : answer endpoint ---
+# --- T-03.3 : generate endpoint ---
+
+
+@pytest.fixture
+def sample_course(user) -> Course:
+    return Course.objects.create(
+        user=user,
+        title="Droit civil",
+        source_text="Article 1101 du code civil. " * 20,
+    )
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_from_course(auth_client, sample_course):
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id},
+        format="json",
+    )
+    assert response.status_code == 201, response.data
+    assert response.data["title"] == "Droit civil"
+    assert len(response.data["questions"]) == 10
+    assert Quiz.objects.filter(title="Droit civil").count() == 1
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_rejects_short_course(auth_client, user):
+    course = Course.objects.create(
+        user=user,
+        title="Trop court",
+        source_text="Court",
+    )
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": course.id},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_404_for_other_users_course(auth_client, other_user):
+    course = Course.objects.create(
+        user=other_user,
+        title="Privé",
+        source_text="Lorem ipsum dolor sit amet. " * 20,
+    )
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": course.id},
+        format="json",
+    )
+    assert response.status_code == 404
+
+
+def test_generate_quiz_requires_auth():
+    response = APIClient().post(
+        "/api/quizzes/generate/",
+        {"course_id": 1},
+        format="json",
+    )
+    assert response.status_code in (401, 403)
+
+
+# --- T-04.2 : answer endpoint ---
 
 
 def test_answer_all_correct(auth_client, sample_quiz):
@@ -91,6 +158,24 @@ def test_answer_all_correct(auth_client, sample_quiz):
     assert all(d["correct"] for d in response.data["details"])
     sample_quiz.refresh_from_db()
     assert sample_quiz.score == 10
+    for q in sample_quiz.questions.all():
+        assert q.selected_index == 0
+
+
+def test_answer_persists_wrong_selected_index(auth_client, sample_quiz):
+    """US-04 : chaque réponse incorrecte est enregistrée avec son statut."""
+    response = auth_client.post(
+        f"/api/quizzes/{sample_quiz.id}/answer/",
+        {"answers": [{"index": 1, "selected_index": 2}] + [
+            {"index": i, "selected_index": 0} for i in range(2, 11)
+        ]},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.data["details"][0]["correct"] is False
+    q1 = sample_quiz.questions.get(index=1)
+    q1.refresh_from_db()
+    assert q1.selected_index == 2
 
 
 def test_answer_all_wrong(auth_client, sample_quiz):
@@ -119,6 +204,17 @@ def test_answer_requires_10(auth_client, sample_quiz):
     response = auth_client.post(
         f"/api/quizzes/{sample_quiz.id}/answer/",
         {"answers": [{"index": 1, "selected_index": 0}]},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
+def test_answer_rejects_duplicate_index(auth_client, sample_quiz):
+    response = auth_client.post(
+        f"/api/quizzes/{sample_quiz.id}/answer/",
+        {
+            "answers": [{"index": 1, "selected_index": 0}] * 10,
+        },
         format="json",
     )
     assert response.status_code == 400

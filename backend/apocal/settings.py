@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "llm",
     "quizzes",
     "administration",
+    "courses",
 ]
 
 MIDDLEWARE = [

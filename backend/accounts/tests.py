@@ -81,6 +81,10 @@ def test_signup_rejects_duplicate_email_case_insensitive(client, user):
     )
     assert response.status_code == 400
     assert User.objects.filter(email__iexact="alice@test.com").count() == 1
+        {"email": "bob@test.com", "password": "court"},
+        format="json",
+    )
+    assert response.status_code == 400
 
 
 def test_login_returns_token(client, user):

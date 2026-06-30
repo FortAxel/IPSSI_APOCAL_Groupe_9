@@ -17,6 +17,14 @@ class Quiz(models.Model):
         related_name="quizzes",
         help_text="Propriétaire du quiz.",
     )
+    course = models.ForeignKey(
+        "courses.Course",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="quizzes",
+        help_text="Cours source à partir duquel ce quiz a été généré.",
+    )
     title = models.CharField(max_length=200, help_text="Titre du cours / quiz (saisi ou déduit).")
     source_text = models.TextField(
         help_text="Texte source utilisé pour la génération (extrait PDF ou saisie).",

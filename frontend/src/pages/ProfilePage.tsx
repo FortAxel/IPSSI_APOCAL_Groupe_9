@@ -66,6 +66,10 @@ export default function ProfilePage() {
     e.preventDefault();
     setPwdMsg(null);
     setPwdErr(null);
+    if (newPwd.length < 8) {
+      setPwdErr('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
     if (newPwd !== confirmPwd) {
       setPwdErr('Les deux nouveaux mots de passe ne correspondent pas.');
       return;
@@ -190,6 +194,7 @@ export default function ProfilePage() {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Nouveau mot de passe
+                <span className="text-slate-400 font-normal"> (≥ 8 caractères)</span>
               </label>
               <input
                 type="password"

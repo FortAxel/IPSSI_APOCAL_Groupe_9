@@ -37,6 +37,23 @@ def test_signup_creates_user(client):
     assert User.objects.filter(email="bob@test.com").exists()
 
 
+def test_signup_normalizes_email_and_uses_it_as_username(client):
+    response = client.post(
+        "/api/accounts/signup/",
+        {
+            "email": "  BOB@TEST.COM  ",
+            "password": "motdepasse123",
+            "first_name": "Bob",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201, response.data
+    user = User.objects.get(email="bob@test.com")
+    assert user.username == "bob@test.com"
+    assert user.first_name == "Bob"
+
+
 def test_signup_requires_email(client):
     response = client.post(
         "/api/accounts/signup/",
@@ -49,6 +66,21 @@ def test_signup_requires_email(client):
 def test_signup_rejects_short_password(client):
     response = client.post(
         "/api/accounts/signup/",
+        {"email": "short@test.com", "password": "1234567"},
+        format="json",
+    )
+    assert response.status_code == 400
+    assert not User.objects.filter(email="short@test.com").exists()
+
+
+def test_signup_rejects_duplicate_email_case_insensitive(client, user):
+    response = client.post(
+        "/api/accounts/signup/",
+        {"email": "ALICE@TEST.COM", "password": "motdepasse123"},
+        format="json",
+    )
+    assert response.status_code == 400
+    assert User.objects.filter(email__iexact="alice@test.com").count() == 1
         {"email": "bob@test.com", "password": "court"},
         format="json",
     )

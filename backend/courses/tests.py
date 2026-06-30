@@ -1,4 +1,4 @@
-"""Tests pour POST /api/courses/ — dépôt PDF (T-02.2)."""
+"""Tests pour POST /api/courses/ — dépôt PDF (T-02.2) et texte (T-02.3)."""
 
 from unittest.mock import patch
 
@@ -65,11 +65,33 @@ def test_create_course_rejects_non_pdf(auth_client):
     assert response.status_code == 400
 
 
-def test_create_course_requires_pdf(auth_client):
+def test_create_course_requires_text_or_pdf(auth_client):
     response = auth_client.post(
         "/api/courses/",
-        {"title": "Sans fichier"},
+        {"title": "Sans contenu"},
         format="multipart",
+    )
+    assert response.status_code == 400
+
+
+def test_create_course_from_text(auth_client):
+    texte = "Lorem ipsum dolor sit amet. " * 10
+    response = auth_client.post(
+        "/api/courses/",
+        {"title": "Cours collé", "source_text": texte},
+        format="json",
+    )
+    assert response.status_code == 201, response.data
+    assert response.data["title"] == "Cours collé"
+    assert response.data["source_text"] == texte.strip()
+    assert Course.objects.filter(title="Cours collé").count() == 1
+
+
+def test_create_course_rejects_short_text(auth_client):
+    response = auth_client.post(
+        "/api/courses/",
+        {"title": "Trop court", "source_text": "Court"},
+        format="json",
     )
     assert response.status_code == 400
 

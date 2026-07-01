@@ -1,23 +1,41 @@
-"""Endpoint POST /api/courses/ — dépôt d'un cours (PDF ou texte)."""
+"""
+Endpoints /api/courses/ :
+    GET  /api/courses/  — bibliothèque paginée du user connecté (T-08.1)
+    POST /api/courses/  — dépôt d'un cours (PDF ou texte)
+"""
 
 from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from llm.pdf_utils import PDFError, extract_text_from_pdf
 
 from .models import Course
-from .serializers import CourseSerializer, CreateCourseSerializer
+from .serializers import (
+    CourseSerializer,
+    CourseSummarySerializer,
+    CreateCourseSerializer,
+)
 
 
-class CreateCourseView(APIView):
-    """Crée un cours à partir d'un PDF (≤ 5 Mo) ou d'un texte (≥ 200 caractères)."""
+class CourseView(generics.ListAPIView):
+    """GET liste paginée + POST création sur /api/courses/."""
 
+    serializer_class = CourseSummarySerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    @extend_schema(
+        description=(
+            "Liste paginée des cours de l'utilisateur connecté, triés par "
+            "`created_at` décroissant. Champs : id, title, created_at."
+        ),
+        responses={200: CourseSummarySerializer(many=True)},
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
     @extend_schema(
         request=CreateCourseSerializer,
@@ -46,3 +64,6 @@ class CreateCourseView(APIView):
             content=source_text,
         )
         return Response(CourseSerializer(course).data, status=status.HTTP_201_CREATED)
+
+    def get_queryset(self):
+        return Course.objects.filter(user=self.request.user).order_by("-created_at")

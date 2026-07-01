@@ -74,9 +74,7 @@ class DataRequest(models.Model):
         related_name="data_requests",
     )
     request_type = models.CharField(max_length=20, choices=RequestType.choices)
-    status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.PENDING
-    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     responded_at = models.DateTimeField(null=True, blank=True)
     handled_by = models.ForeignKey(

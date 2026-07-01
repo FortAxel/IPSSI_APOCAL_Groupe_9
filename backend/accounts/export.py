@@ -1,5 +1,10 @@
 """Export RGPD Art. 15 — données personnelles de l'utilisateur authentifié."""
 
+import csv
+import io
+import json
+import zipfile
+
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -60,3 +65,54 @@ def build_user_data_export(user: User) -> dict:
         "reports": [],
         "audit_logs": [],
     }
+
+
+def build_zip_export(user: User) -> bytes:
+    """Construit l'archive ZIP de l'export RGPD (quizzes.json + responses.csv + audit.json)."""
+    data = build_user_data_export(user)
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("quizzes.json", json.dumps(data, ensure_ascii=False, indent=2))
+
+        csv_buffer = io.StringIO()
+        writer = csv.writer(csv_buffer)
+        writer.writerow(
+            [
+                "quiz_id",
+                "quiz_title",
+                "question_index",
+                "prompt",
+                "selected_index",
+                "correct_index",
+                "is_correct",
+            ]
+        )
+        for quiz in data["quizzes"]:
+            for q in quiz["questions"]:
+                sel = q["selected_index"]
+                is_correct = (sel == q["correct_index"]) if sel is not None else ""
+                writer.writerow(
+                    [
+                        quiz["id"],
+                        quiz["title"],
+                        q["index"],
+                        q["prompt"],
+                        sel if sel is not None else "",
+                        q["correct_index"],
+                        is_correct,
+                    ]
+                )
+        zf.writestr("responses.csv", csv_buffer.getvalue())
+
+        audit = {
+            "exported_at": data["exported_at"],
+            "format_version": data["format_version"],
+            "account": data["account"],
+            "profile": data["profile"],
+            "audit_logs": data["audit_logs"],
+            "reports": data["reports"],
+        }
+        zf.writestr("audit.json", json.dumps(audit, ensure_ascii=False, indent=2))
+
+    return buffer.getvalue()

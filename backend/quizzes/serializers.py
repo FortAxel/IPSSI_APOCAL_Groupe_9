@@ -66,6 +66,19 @@ class SubmitAnswersSerializer(serializers.Serializer):
 
 
 class GenerateQuizSerializer(serializers.Serializer):
-    """Input pour POST /api/quizzes/generate/ — génère 10 QCM depuis un cours déposé."""
+    """Input pour POST /api/quizzes/generate/ — génère des QCM depuis un cours déposé."""
 
     course_id = serializers.IntegerField(min_value=1)
+    difficulty = serializers.ChoiceField(
+        choices=["easy", "medium", "hard"],
+        required=False,
+        allow_blank=False,
+    )
+    nb_questions = serializers.IntegerField(min_value=5, max_value=20, required=False)
+
+    def validate(self, attrs):
+        if "nb_questions" not in attrs:
+            attrs["nb_questions"] = 10
+        if "difficulty" not in attrs:
+            attrs["difficulty"] = "medium"
+        return attrs

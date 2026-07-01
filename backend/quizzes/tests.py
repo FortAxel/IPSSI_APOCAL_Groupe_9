@@ -181,6 +181,53 @@ def test_generate_quiz_404_for_other_users_course(auth_client, other_user):
     assert response.status_code == 404
 
 
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_accepts_difficulty_and_question_bounds(auth_client, sample_course):
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id, "difficulty": "hard", "nb_questions": 7},
+        format="json",
+    )
+
+    assert response.status_code == 201, response.data
+    assert len(response.data["questions"]) == 7
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_rejects_out_of_range_question_count(auth_client, sample_course):
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id, "nb_questions": 4},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "nb_questions" in response.data["detail"].lower()
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_rejects_unknown_difficulty(auth_client, sample_course):
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id, "difficulty": "wizard"},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "difficulty" in response.data["detail"].lower()
+
+
+def test_answer_quiz_is_blocked_for_other_users(auth_client, other_user):
+    other_quiz = Quiz.objects.create(user=other_user, title="Privé", source_text="...")
+    response = auth_client.post(
+        f"/api/quizzes/{other_quiz.id}/answer/",
+        {"answers": [{"index": 1, "selected_index": 0}] * 10},
+        format="json",
+    )
+
+    assert response.status_code == 404
+
+
 def test_generate_quiz_requires_auth():
     response = APIClient().post(
         "/api/quizzes/generate/",

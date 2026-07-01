@@ -11,6 +11,7 @@ from django.db.models import Avg, Count, F, Max
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -86,12 +87,18 @@ class GenerateQuizView(APIView):
             )
 
         serializer = GenerateQuizSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except ValidationError as exc:
+            return Response({"detail": str(exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+
         course = get_object_or_404(
             Course,
             pk=serializer.validated_data["course_id"],
             user=request.user,
         )
+        difficulty = serializer.validated_data.get("difficulty", "medium")
+        nb_questions = serializer.validated_data.get("nb_questions", 10)
 
         source_text = course.content.strip()
         if len(source_text) < 200:
@@ -104,6 +111,8 @@ class GenerateQuizView(APIView):
             questions_data = get_llm_client().generate_quiz(
                 source_text=source_text,
                 title=course.title,
+                difficulty=difficulty,
+                nb_questions=nb_questions,
             )
         except LLMError as exc:
             return Response(
@@ -117,7 +126,7 @@ class GenerateQuizView(APIView):
                 title=course.title,
                 source_text=source_text,
             )
-            for i, q in enumerate(questions_data, start=1):
+            for i, q in enumerate(questions_data[:nb_questions], start=1):
                 Question.objects.create(
                     quiz=quiz,
                     index=i,

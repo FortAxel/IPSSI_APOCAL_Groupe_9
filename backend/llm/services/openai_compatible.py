@@ -48,7 +48,13 @@ class OpenAICompatibleClient(LLMClient):
                 + "Ou utilisez LLM_BACKEND=ollama (gratuit, local) pour le développement."
             )
 
-    def generate_quiz(self, source_text: str, title: str) -> list[dict]:
+    def generate_quiz(
+        self,
+        source_text: str,
+        title: str,
+        difficulty: str = "medium",
+        nb_questions: int = 10,
+    ) -> list[dict]:
         user_content = build_user_prompt(source_text, title)
         return generate_quiz_validated(lambda: self._call(user_content))
 

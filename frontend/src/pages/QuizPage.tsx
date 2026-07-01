@@ -50,7 +50,13 @@ export default function QuizPage() {
     }
   };
 
-  if (loading) return <p className="text-slate-500">Chargement du quiz…</p>;
+  if (loading)
+    return (
+      <div className="max-w-3xl mx-auto text-center py-12">
+        <span className="animate-spin text-2xl">⏳</span>
+        <p className="text-slate-500 mt-3">Chargement du quiz…</p>
+      </div>
+    );
   if (!quiz) {
     return (
       <div className="max-w-3xl mx-auto">
@@ -91,7 +97,22 @@ export default function QuizPage() {
         >
           <h2 className="text-3xl font-bold text-slate-900 mb-2">
             Score : {result.score} / {result.total}
+            <span className="text-lg font-normal text-slate-500 ml-2">
+              ({Math.round((result.score / result.total) * 100)}%)
+            </span>
           </h2>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mb-3">
+            <div
+              className={`h-2.5 rounded-full transition-all duration-1000 ${
+                result.score >= 7
+                  ? 'bg-emerald-500'
+                  : result.score >= 4
+                    ? 'bg-amber-500'
+                    : 'bg-rose-500'
+              }`}
+              style={{ width: `${(result.score / result.total) * 100}%` }}
+            />
+          </div>
           <p className="text-slate-700">
             {result.score === 10
               ? '🎉 Sans-faute ! Tu maitrises ce chapitre.'
@@ -101,9 +122,23 @@ export default function QuizPage() {
                   ? "📚 Tu as les bases, mais des révisions s'imposent."
                   : '⚠️ Il faut reprendre le cours en profondeur.'}
           </p>
-          <Link to="/history" className="btn-secondary mt-4 inline-flex">
-            Retour à l'historique
-          </Link>
+          <div className="flex flex-wrap gap-3 mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setAnswers({});
+                setResult(null);
+                setError(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="btn-primary"
+            >
+              🔄 Refaire ce quiz
+            </button>
+            <Link to="/history" className="btn-secondary inline-flex">
+              Retour à l'historique
+            </Link>
+          </div>
         </div>
       )}
 

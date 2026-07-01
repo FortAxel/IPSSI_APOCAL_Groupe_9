@@ -126,3 +126,18 @@ export async function deleteAccount(password: string): Promise<void> {
   await api.delete('/accounts/profile/', { data: { password } });
   clearToken();
 }
+
+/** Télécharge l'export RGPD des données personnelles (droit à la portabilité, Art. 15). */
+export async function exportMyData(): Promise<void> {
+  const response = await api.get('/accounts/me/export/', { responseType: 'blob' });
+  const url = URL.createObjectURL(new Blob([response.data]));
+  const a = document.createElement('a');
+  const disposition: string = response.headers['content-disposition'] ?? '';
+  const match = /filename[^;=\n]*=(['"]?)([^'";\n]+)\1/.exec(disposition);
+  a.href = url;
+  a.download = match?.[2] ?? 'mes-donnees.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

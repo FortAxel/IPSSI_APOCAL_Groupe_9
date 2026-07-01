@@ -29,17 +29,24 @@ from .serializers import (
 
 
 class QuizListView(generics.ListAPIView):
-    """Historique des quizz du user connecté."""
+    """GET /api/quizzes/ — historique paginé du user connecté (T-06.1)."""
 
     serializer_class = QuizSummarySerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return Quiz.objects.filter(user=self.request.user).order_by("-created_at")
-
-    @extend_schema(description="Liste paginée des quizz de l'utilisateur connecté.")
+    @extend_schema(
+        description=(
+            "Liste paginée des quiz de l'utilisateur connecté, triés par "
+            "`created_at` décroissant. Champs summary : id, title, score "
+            "(/10 ou null si pas encore passé), nb_questions, created_at."
+        ),
+        responses={200: QuizSummarySerializer(many=True)},
+    )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Quiz.objects.filter(user=self.request.user).order_by("-created_at")
 
 
 class QuizDetailView(generics.RetrieveAPIView):
@@ -86,7 +93,7 @@ class GenerateQuizView(APIView):
             user=request.user,
         )
 
-        source_text = course.source_text.strip()
+        source_text = course.content.strip()
         if len(source_text) < 200:
             return Response(
                 {"detail": "Le cours ne contient pas assez de texte (≥ 200 caractères)."},

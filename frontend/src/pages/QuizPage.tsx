@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getQuiz, submitAnswers, type Quiz, type AnswerResult } from '@/api/quizzes';
+import { getApiErrorMessage } from '@/api/errors';
 
 export default function QuizPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,10 +15,15 @@ export default function QuizPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isNaN(quizId)) {
+      setError('Quiz introuvable.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     getQuiz(quizId)
       .then(setQuiz)
-      .catch(() => setError('Impossible de charger ce quiz.'))
+      .catch((err) => setError(getApiErrorMessage(err, 'Impossible de charger ce quiz.')))
       .finally(() => setLoading(false));
   }, [quizId]);
 
@@ -27,7 +33,7 @@ export default function QuizPage() {
   };
 
   const handleSubmit = async () => {
-    if (!quiz || Object.keys(answers).length !== 10) return;
+    if (!quiz || Object.keys(answers).length !== quiz.questions.length) return;
     setSubmitting(true);
     try {
       const payload = quiz.questions.map((q) => ({
@@ -37,21 +43,39 @@ export default function QuizPage() {
       const res = await submitAnswers(quiz.id, payload);
       setResult(res);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {
-      setError('Échec de la soumission.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Échec de la soumission.'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <p className="text-slate-500">Chargement du quiz…</p>;
-  if (error) return <p className="text-rose-600">{error}</p>;
-  if (!quiz) return null;
+  if (loading)
+    return (
+      <div className="max-w-3xl mx-auto text-center py-12">
+        <span className="animate-spin text-2xl">⏳</span>
+        <p className="text-slate-500 mt-3">Chargement du quiz…</p>
+      </div>
+    );
+  if (!quiz) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <div className="p-3 bg-rose-50 border-l-4 border-rose-500 text-sm text-rose-900 rounded">
+          {error ?? 'Quiz introuvable.'}
+        </div>
+      </div>
+    );
+  }
 
-  const allAnswered = Object.keys(answers).length === 10;
+  const allAnswered = Object.keys(answers).length === quiz.questions.length;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {error && (
+        <div className="p-3 bg-rose-50 border-l-4 border-rose-500 text-sm text-rose-900 rounded">
+          <p>{error}</p>
+        </div>
+      )}
       {/* En-tête */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{quiz.title}</h1>
@@ -73,7 +97,22 @@ export default function QuizPage() {
         >
           <h2 className="text-3xl font-bold text-slate-900 mb-2">
             Score : {result.score} / {result.total}
+            <span className="text-lg font-normal text-slate-500 ml-2">
+              ({Math.round((result.score / result.total) * 100)}%)
+            </span>
           </h2>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mb-3">
+            <div
+              className={`h-2.5 rounded-full transition-all duration-1000 ${
+                result.score >= 7
+                  ? 'bg-emerald-500'
+                  : result.score >= 4
+                    ? 'bg-amber-500'
+                    : 'bg-rose-500'
+              }`}
+              style={{ width: `${(result.score / result.total) * 100}%` }}
+            />
+          </div>
           <p className="text-slate-700">
             {result.score === 10
               ? '🎉 Sans-faute ! Tu maitrises ce chapitre.'
@@ -83,14 +122,28 @@ export default function QuizPage() {
                   ? "📚 Tu as les bases, mais des révisions s'imposent."
                   : '⚠️ Il faut reprendre le cours en profondeur.'}
           </p>
-          <Link to="/history" className="btn-secondary mt-4 inline-flex">
-            Retour à l'historique
-          </Link>
+          <div className="flex flex-wrap gap-3 mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setAnswers({});
+                setResult(null);
+                setError(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="btn-primary"
+            >
+              🔄 Refaire ce quiz
+            </button>
+            <Link to="/history" className="btn-secondary inline-flex">
+              Retour à l'historique
+            </Link>
+          </div>
         </div>
       )}
 
       {/* Questions */}
-      {quiz.questions.map((q) => {
+      {quiz.questions?.map((q) => {
         const userChoice = answers[q.index];
         const detail = result?.details.find((d) => d.index === q.index);
 
@@ -101,7 +154,7 @@ export default function QuizPage() {
               <h3 className="font-semibold text-slate-900">{q.prompt}</h3>
             </div>
             <div className="space-y-2">
-              {q.options.map((opt, optIdx) => {
+              {q.options?.map((opt, optIdx) => {
                 const isSelected = userChoice === optIdx;
                 const isCorrect = detail && q.correct_index === optIdx;
                 const isWrongPick = detail && isSelected && !detail.correct;
@@ -152,7 +205,7 @@ export default function QuizPage() {
             ? 'Correction en cours…'
             : allAnswered
               ? '🎯 Soumettre mes réponses'
-              : `Répondre à toutes les questions (${Object.keys(answers).length}/10)`}
+              : `Répondre à toutes les questions (${Object.keys(answers).length}/${quiz.questions.length})`}
         </button>
       )}
     </div>

@@ -168,12 +168,18 @@ class ResendVerificationView(APIView):
 
 
 class PasswordResetRequestView(APIView):
-    """Demande de réinitialisation : envoie un email avec un lien (si le compte existe)."""
+    """Demande de réinitialisation : envoie un email avec un lien (si le compte existe).
+
+    T-07.1 (US-07) : réponse identique que le compte existe ou non (anti-énumération).
+    Le lien contient uid + token valide 24 h (cf. ``accounts/tokens.py``).
+    """
 
     permission_classes = [AllowAny]
     authentication_classes = []  # endpoint public : pas de CSRF via session (cf. LoginView)
 
     @extend_schema(
+        tags=["accounts"],
+        summary="Demander un lien de réinitialisation de mot de passe",
         request=PasswordResetRequestSerializer,
         responses={200: OpenApiResponse(description="Email envoyé si le compte existe")},
     )
@@ -200,14 +206,22 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
-    """Définit le nouveau mot de passe à partir du lien (uid + token)."""
+    """Définit le nouveau mot de passe à partir du lien (uid + token).
+
+    T-07.1 (US-07) : le token expire après 24 h ou dès que le mot de passe change.
+    """
 
     permission_classes = [AllowAny]
     authentication_classes = []  # endpoint public : pas de CSRF via session (cf. LoginView)
 
     @extend_schema(
+        tags=["accounts"],
+        summary="Confirmer la réinitialisation (uid + token + nouveau mot de passe)",
         request=PasswordResetConfirmSerializer,
-        responses={200: OpenApiResponse(description="Mot de passe réinitialisé")},
+        responses={
+            200: OpenApiResponse(description="Mot de passe réinitialisé"),
+            400: OpenApiResponse(description="Lien invalide ou expiré"),
+        },
     )
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)

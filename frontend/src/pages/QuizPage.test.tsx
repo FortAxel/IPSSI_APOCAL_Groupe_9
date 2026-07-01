@@ -25,7 +25,7 @@ describe('QuizPage', () => {
     window.scrollTo = vi.fn();
   });
 
-  it('affiche le score et les corrections après soumission', async () => {
+  it('charge le quiz, soumet les réponses et affiche la correction', async () => {
     vi.mocked(getQuiz).mockResolvedValue({
       id: 42,
       title: 'Quiz de test',
@@ -51,22 +51,22 @@ describe('QuizPage', () => {
       })),
     });
 
-    renderPage();
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(getQuiz).toHaveBeenCalledWith(42);
+    });
 
     expect(await screen.findByText('Quiz de test')).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[0]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[1]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[2]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[3]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[4]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[5]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[6]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[7]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[8]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^A\. / })[9]);
+    const optionButtons = screen.getAllByRole('button', { name: /^A\. / });
+    expect(optionButtons).toHaveLength(10);
+    optionButtons.forEach((button) => fireEvent.click(button));
 
-    fireEvent.click(screen.getByRole('button', { name: /soumettre mes réponses/i }));
+    const submitButton = screen.getByRole('button', { name: /soumettre mes réponses/i });
+    expect(submitButton).not.toBeDisabled();
+
+    fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(submitAnswers).toHaveBeenCalledWith(

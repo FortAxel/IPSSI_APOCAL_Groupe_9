@@ -12,6 +12,7 @@ import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import VerifyEmailPage from '@/pages/VerifyEmailPage';
 import UploadPage from '@/pages/UploadPage';
+import GenerateQuizPage from '@/pages/GenerateQuizPage';
 import QuizPage from '@/pages/QuizPage';
 import HistoryPage from '@/pages/HistoryPage';
 import ProfilePage from '@/pages/ProfilePage';
@@ -50,6 +51,14 @@ export default function App() {
                   element={
                     <RequireAuth>
                       <UploadPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="quiz"
+                  element={
+                    <RequireAuth>
+                      <GenerateQuizPage />
                     </RequireAuth>
                   }
                 />

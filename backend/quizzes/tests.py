@@ -1,5 +1,6 @@
 """Tests pour l'app quizzes — K1 (list/detail) + K2 (answer) + T-03.3 (generate)."""
 
+import time
 import pytest
 from django.contrib.auth.models import User
 from django.test import override_settings
@@ -66,6 +67,43 @@ def test_quiz_list_does_not_leak_other_users_quizzes(auth_client, other_user):
     assert response.data["count"] == 0
 
 
+# --- T-06.1 : GET /api/quizzes/ paginé + tri date desc ---
+
+
+def test_quiz_list_summary_fields(auth_client, sample_quiz):
+    response = auth_client.get("/api/quizzes/")
+    assert response.status_code == 200
+    item = response.data["results"][0]
+    assert item["title"] == "Cours de test"
+    assert item["score"] is None
+    assert "created_at" in item
+    assert item["nb_questions"] == 10
+
+
+def test_quiz_list_sorted_by_created_at_desc(auth_client, user):
+    older = Quiz.objects.create(
+        user=user, title="Ancien", source_text="...", score=5
+    )
+    time.sleep(0.01)
+    newer = Quiz.objects.create(
+        user=user, title="Récent", source_text="...", score=8
+    )
+    response = auth_client.get("/api/quizzes/")
+    titles = [q["title"] for q in response.data["results"]]
+    assert titles.index("Récent") < titles.index("Ancien")
+
+
+def test_quiz_list_pagination(auth_client, user):
+    for i in range(21):
+        Quiz.objects.create(user=user, title=f"Quiz {i}", source_text="...")
+    response = auth_client.get("/api/quizzes/")
+    assert response.status_code == 200
+    assert response.data["count"] == 21
+    assert len(response.data["results"]) == 20
+    assert response.data["next"] is not None
+    assert response.data["previous"] is None
+
+
 def test_quiz_detail(auth_client, sample_quiz):
     response = auth_client.get(f"/api/quizzes/{sample_quiz.id}/")
     assert response.status_code == 200
@@ -86,7 +124,7 @@ def sample_course(user) -> Course:
     return Course.objects.create(
         user=user,
         title="Droit civil",
-        source_text="Article 1101 du code civil. " * 20,
+        content="Article 1101 du code civil. " * 20,
     )
 
 
@@ -104,11 +142,24 @@ def test_generate_quiz_from_course(auth_client, sample_course):
 
 
 @override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_performance_under_60_seconds(auth_client, sample_course):
+    start = time.perf_counter()
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id},
+        format="json",
+    )
+    elapsed = time.perf_counter() - start
+    assert response.status_code == 201, response.data
+    assert elapsed < 60, f"Generation took trop longtemps : {elapsed:.2f}s"
+
+
+@override_settings(LLM_BACKEND="mock")
 def test_generate_quiz_rejects_short_course(auth_client, user):
     course = Course.objects.create(
         user=user,
         title="Trop court",
-        source_text="Court",
+        content="Court",
     )
     response = auth_client.post(
         "/api/quizzes/generate/",
@@ -123,7 +174,7 @@ def test_generate_quiz_404_for_other_users_course(auth_client, other_user):
     course = Course.objects.create(
         user=other_user,
         title="Privé",
-        source_text="Lorem ipsum dolor sit amet. " * 20,
+        content="Lorem ipsum dolor sit amet. " * 20,
     )
     response = auth_client.post(
         "/api/quizzes/generate/",

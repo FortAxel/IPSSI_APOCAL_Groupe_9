@@ -16,7 +16,7 @@ import requests
 from django.conf import settings
 
 from .base import LLMClient, LLMError
-from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, parse_and_validate_quiz
+from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, generate_quiz_validated
 
 # L'API Gemini place le nom du modèle dans l'URL : .../models/<MODEL>:generateContent
 GEMINI_URL_TEMPLATE = (
@@ -41,12 +41,12 @@ class GeminiLLMClient(LLMClient):
             )
 
     def generate_quiz(self, source_text: str, title: str) -> list[dict]:
-        raw = self._call_gemini(source_text, title)
-        return parse_and_validate_quiz(raw)
+        user_content = build_user_prompt(source_text, title)
+        return generate_quiz_validated(lambda: self._call_gemini(user_content))
 
     # ----- internals -----
 
-    def _call_gemini(self, source_text: str, title: str) -> str:
+    def _call_gemini(self, user_content: str) -> str:
         url = GEMINI_URL_TEMPLATE.format(model=self.model)
         try:
             response = requests.post(
@@ -59,7 +59,7 @@ class GeminiLLMClient(LLMClient):
                 json={
                     # Consignes système isolées du contenu utilisateur.
                     "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-                    "contents": [{"parts": [{"text": build_user_prompt(source_text, title)}]}],
+                    "contents": [{"parts": [{"text": user_content}]}],
                     "generationConfig": {
                         "temperature": 0.4,
                         # Force une sortie JSON stricte (équivalent du JSON mode).

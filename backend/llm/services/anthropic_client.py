@@ -16,7 +16,7 @@ import requests
 from django.conf import settings
 
 from .base import LLMClient, LLMError
-from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, parse_and_validate_quiz
+from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, generate_quiz_validated
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
@@ -38,12 +38,12 @@ class AnthropicLLMClient(LLMClient):
             )
 
     def generate_quiz(self, source_text: str, title: str) -> list[dict]:
-        raw = self._call_anthropic(source_text, title)
-        return parse_and_validate_quiz(raw)
+        user_content = build_user_prompt(source_text, title)
+        return generate_quiz_validated(lambda: self._call_anthropic(user_content))
 
     # ----- internals -----
 
-    def _call_anthropic(self, source_text: str, title: str) -> str:
+    def _call_anthropic(self, user_content: str) -> str:
         try:
             response = requests.post(
                 ANTHROPIC_URL,
@@ -57,7 +57,7 @@ class AnthropicLLMClient(LLMClient):
                     "max_tokens": 4096,  # obligatoire chez Anthropic ; large pour 10 QCM
                     "system": SYSTEM_PROMPT,  # consignes isolées du contenu utilisateur
                     "messages": [
-                        {"role": "user", "content": build_user_prompt(source_text, title)},
+                        {"role": "user", "content": user_content},
                     ],
                     "temperature": 0.4,
                 },

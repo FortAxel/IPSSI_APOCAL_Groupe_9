@@ -12,11 +12,11 @@ import requests
 from django.conf import settings
 
 from .base import LLMClient, LLMError
-from .quiz_prompt import build_full_prompt, parse_and_validate_quiz
+from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, generate_quiz_validated
 
 
 class OllamaLLMClient(LLMClient):
-    """Client HTTP minimal pour Ollama (/api/generate)."""
+    """Client HTTP minimal pour Ollama (/api/chat avec rôles system/user)."""
 
     def __init__(
         self, *, model: str | None = None, host: str | None = None, timeout: int | None = None
@@ -29,24 +29,27 @@ class OllamaLLMClient(LLMClient):
         self.timeout = timeout or settings.OLLAMA_TIMEOUT
 
     def generate_quiz(self, source_text: str, title: str) -> list[dict]:
-        # Ollama /api/generate attend UN prompt unique (pas de séparation
-        # system/user) : on concatène donc system + cours via build_full_prompt.
-        prompt = build_full_prompt(source_text, title)
-        raw = self._call_ollama(prompt)
-        return parse_and_validate_quiz(raw)
+        # T-24.2 : séparation system/user via /api/chat (défense OWASP LLM-01).
+        user_content = build_user_prompt(source_text, title)
+        return generate_quiz_validated(
+            lambda: self._call_ollama_chat(user_content),
+        )
 
     # ----- internals -----
 
-    def _call_ollama(self, prompt: str) -> str:
+    def _call_ollama_chat(self, user_content: str) -> str:
         try:
             response = requests.post(
-                f"{self.host}/api/generate",
+                f"{self.host}/api/chat",
                 json={
                     "model": self.model,
-                    "prompt": prompt,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_content},
+                    ],
                     "stream": False,
-                    "options": {"temperature": 0.4},  # peu de créativité : on veut du factuel
-                    "format": "json",  # mode JSON strict d'Ollama si supporté
+                    "options": {"temperature": 0.4},
+                    "format": "json",
                 },
                 timeout=self.timeout,
             )
@@ -55,7 +58,8 @@ class OllamaLLMClient(LLMClient):
             raise LLMError(f"Ollama injoignable : {exc}") from exc
 
         data = response.json()
-        raw = data.get("response", "")
+        message = data.get("message") or {}
+        raw = message.get("content", "")
         if not raw:
             raise LLMError("Ollama a renvoyé une réponse vide.")
         return raw

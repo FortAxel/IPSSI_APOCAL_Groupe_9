@@ -124,9 +124,7 @@ export default function GenerateQuizPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Contenu du cours
-          </label>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Contenu du cours</label>
           <textarea
             rows={10}
             value={sourceText}

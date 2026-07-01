@@ -1,6 +1,7 @@
 """Tests pour l'app quizzes — K1 (list/detail) + K2 (answer) + T-03.3 (generate)."""
 
 import time
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import override_settings
@@ -81,13 +82,9 @@ def test_quiz_list_summary_fields(auth_client, sample_quiz):
 
 
 def test_quiz_list_sorted_by_created_at_desc(auth_client, user):
-    older = Quiz.objects.create(
-        user=user, title="Ancien", source_text="...", score=5
-    )
+    Quiz.objects.create(user=user, title="Ancien", source_text="...", score=5)
     time.sleep(0.01)
-    newer = Quiz.objects.create(
-        user=user, title="Récent", source_text="...", score=8
-    )
+    Quiz.objects.create(user=user, title="Récent", source_text="...", score=8)
     response = auth_client.get("/api/quizzes/")
     titles = [q["title"] for q in response.data["results"]]
     assert titles.index("Récent") < titles.index("Ancien")
@@ -217,9 +214,10 @@ def test_answer_persists_wrong_selected_index(auth_client, sample_quiz):
     """US-04 : chaque réponse incorrecte est enregistrée avec son statut."""
     response = auth_client.post(
         f"/api/quizzes/{sample_quiz.id}/answer/",
-        {"answers": [{"index": 1, "selected_index": 2}] + [
-            {"index": i, "selected_index": 0} for i in range(2, 11)
-        ]},
+        {
+            "answers": [{"index": 1, "selected_index": 2}]
+            + [{"index": i, "selected_index": 0} for i in range(2, 11)]
+        },
         format="json",
     )
     assert response.status_code == 200
@@ -339,10 +337,9 @@ def test_answer_exposes_score_and_details_format(auth_client, sample_quiz):
 def test_answer_is_correct_reflects_answer(auth_client, sample_quiz):
     """T-05.1 — is_correct est True si et seulement si selected == correct."""
     # correct_index = 0 pour toutes les questions (cf. fixture sample_quiz)
-    answers = (
-        [{"index": 1, "selected_index": 0}]   # bonne
-        + [{"index": i, "selected_index": 1} for i in range(2, 11)]  # mauvaises
-    )
+    answers = [{"index": 1, "selected_index": 0}] + [  # bonne
+        {"index": i, "selected_index": 1} for i in range(2, 11)
+    ]  # mauvaises
     response = auth_client.post(
         f"/api/quizzes/{sample_quiz.id}/answer/",
         {"answers": answers},

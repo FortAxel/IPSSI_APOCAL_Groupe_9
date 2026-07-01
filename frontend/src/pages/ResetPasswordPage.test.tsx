@@ -40,8 +40,6 @@ describe('ResetPasswordPage', () => {
       expect(confirmPasswordReset).toHaveBeenCalledWith('abc', 'def', 'newpassword123');
     });
 
-    expect(
-      await screen.findByText(/mot de passe réinitialisé avec succès/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/mot de passe réinitialisé avec succès/i)).toBeInTheDocument();
   });
 });

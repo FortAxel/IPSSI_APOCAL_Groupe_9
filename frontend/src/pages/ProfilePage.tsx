@@ -17,7 +17,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { changePassword, deleteAccount, updateProfile } from '@/api/auth';
+import { changePassword, deleteAccount, exportMyData, updateProfile } from '@/api/auth';
 import { getApiErrorMessage } from '@/api/errors';
 
 export default function ProfilePage() {
@@ -39,6 +39,10 @@ export default function ProfilePage() {
   const [pwdMsg, setPwdMsg] = useState<string | null>(null);
   const [pwdErr, setPwdErr] = useState<string | null>(null);
   const [pwdLoading, setPwdLoading] = useState(false);
+
+  // --- Zone RGPD : export ---
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportErr, setExportErr] = useState<string | null>(null);
 
   // --- Zone 3 : suppression ---
   const [delPwd, setDelPwd] = useState('');
@@ -85,6 +89,18 @@ export default function ProfilePage() {
       setPwdErr(getApiErrorMessage(err, 'Changement de mot de passe impossible.'));
     } finally {
       setPwdLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExportErr(null);
+    setExportLoading(true);
+    try {
+      await exportMyData();
+    } catch {
+      setExportErr('Export impossible. Veuillez réessayer.');
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -225,20 +241,26 @@ export default function ProfilePage() {
         </form>
       </section>
 
-      {/* Placeholders RGPD / signalement (à compléter pendant la semaine) */}
+      {/* Zone RGPD : export de données (Art. 15 — droit à la portabilité) */}
       <section className="card bg-slate-50">
         <h2 className="text-lg font-semibold text-slate-900 mb-2">Mes données</h2>
         <p className="text-sm text-slate-500 mb-4">
-          Fonctionnalités à construire pendant la semaine APOCAL'IPSSI.
+          Conformément au RGPD (Art. 15), vous pouvez télécharger l'ensemble de vos données
+          personnelles.
         </p>
+        {exportErr && (
+          <div className="mb-4 p-3 bg-rose-50 border-l-4 border-rose-500 text-sm text-rose-900 rounded">
+            {exportErr}
+          </div>
+        )}
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            disabled
-            title="À implémenter (J3-bis) — droit à la portabilité RGPD"
-            className="btn-secondary opacity-60 cursor-not-allowed"
+            onClick={handleExport}
+            disabled={exportLoading}
+            className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Exporter mes données (bientôt)
+            {exportLoading ? 'Export en cours…' : 'Exporter mes données'}
           </button>
           <button
             type="button"

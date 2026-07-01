@@ -4,6 +4,7 @@ Endpoints /api/courses/ :
     POST /api/courses/  — dépôt d'un cours (PDF ou texte)
 """
 
+from django.db.models import Count
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -66,4 +67,8 @@ class CourseView(generics.ListAPIView):
         return Response(CourseSerializer(course).data, status=status.HTTP_201_CREATED)
 
     def get_queryset(self):
-        return Course.objects.filter(user=self.request.user).order_by("-created_at")
+        return (
+            Course.objects.filter(user=self.request.user)
+            .annotate(nb_quizz=Count("quizzes"))
+            .order_by("-created_at")
+        )

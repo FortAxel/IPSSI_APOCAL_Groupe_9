@@ -142,3 +142,39 @@ def test_user_cannot_generate_quiz_from_other_users_course(alice, bob, bob_clien
         format="json",
     )
     assert response.status_code in (403, 404)
+
+
+# --- T-08.2 : GET /api/courses/ — champ nb_quizz annoté ---
+
+
+def test_course_list_nb_quizz_zero(alice_client, alice):
+    """nb_quizz vaut 0 quand le cours n'a aucun quiz associé."""
+    Course.objects.create(user=alice, title="Sans quiz", content=SAMPLE_TEXT)
+    response = alice_client.get("/api/courses/")
+    assert response.status_code == 200
+    assert response.data["results"][0]["nb_quizz"] == 0
+
+
+def test_course_list_nb_quizz_count(alice_client, alice):
+    """nb_quizz reflète le nombre exact de quiz liés au cours."""
+    from quizzes.models import Quiz
+
+    course = Course.objects.create(user=alice, title="Avec quizzes", content=SAMPLE_TEXT)
+    Quiz.objects.create(user=alice, title="Quiz 1", source_text=SAMPLE_TEXT, course=course)
+    Quiz.objects.create(user=alice, title="Quiz 2", source_text=SAMPLE_TEXT, course=course)
+
+    response = alice_client.get("/api/courses/")
+    assert response.status_code == 200
+    assert response.data["results"][0]["nb_quizz"] == 2
+
+
+def test_course_list_anti_leak(alice_client, alice, bob):
+    """Un utilisateur ne voit pas les cours d'un autre (anti-fuite)."""
+    Course.objects.create(user=alice, title="Cours Alice", content=SAMPLE_TEXT)
+    Course.objects.create(user=bob, title="Cours Bob", content=SAMPLE_TEXT)
+
+    response = alice_client.get("/api/courses/")
+    assert response.status_code == 200
+    titles = [c["title"] for c in response.data["results"]]
+    assert "Cours Alice" in titles
+    assert "Cours Bob" not in titles

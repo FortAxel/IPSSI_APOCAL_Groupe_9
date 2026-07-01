@@ -6,11 +6,13 @@ from .models import Course
 
 
 class CourseSummarySerializer(serializers.ModelSerializer):
-    """Version compacte pour la liste bibliothèque (T-08.1)."""
+    """Version compacte pour la liste bibliothèque (T-08.1) — nb_quizz annoté (T-08.2)."""
+
+    nb_quizz = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Course
-        fields = ["id", "title", "created_at"]
+        fields = ["id", "title", "nb_quizz", "created_at"]
         read_only_fields = ["id", "created_at"]
 
 

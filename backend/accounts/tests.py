@@ -4,9 +4,13 @@ Ces tests servent d'exemples : signup, login, logout, accès protégé.
 Lancez : pytest accounts/
 """
 
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
+
+from accounts.tokens import make_password_reset_tokens
 
 pytestmark = pytest.mark.django_db
 
@@ -24,7 +28,6 @@ def user(db) -> User:
 
 
 def test_signup_creates_user(client):
-    # Lot 3 : inscription par EMAIL (username = email en interne).
     response = client.post(
         "/api/accounts/signup/",
         {
@@ -103,6 +106,29 @@ def test_login_with_wrong_password(client, user):
     assert response.status_code == 400
 
 
+def test_password_reset_request_returns_success(client, user):
+    with patch("accounts.views.send_password_reset_email") as mock_send:
+        response = client.post(
+            "/api/accounts/password-reset/",
+            {"email": "alice@test.com"},
+            format="json",
+        )
+    assert response.status_code == 200
+    mock_send.assert_called_once_with(user)
+
+
+def test_password_reset_confirm_changes_password(client, user):
+    uidb64, token = make_password_reset_tokens(user)
+    response = client.post(
+        "/api/accounts/password-reset/confirm/",
+        {"uid": uidb64, "token": token, "new_password": "nouveauMotDePasse123"},
+        format="json",
+    )
+    assert response.status_code == 200
+    user.refresh_from_db()
+    assert user.check_password("nouveauMotDePasse123")
+
+
 def test_me_requires_auth(client):
     response = client.get("/api/accounts/me/")
     assert response.status_code in (401, 403)
@@ -125,7 +151,6 @@ def test_logout_invalidates_token(client, user):
     client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
     response = client.post("/api/accounts/logout/")
     assert response.status_code == 204
-    # Le token n'existe plus
     assert not Token.objects.filter(key=token.key).exists()
 
 

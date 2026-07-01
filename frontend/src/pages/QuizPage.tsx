@@ -101,9 +101,9 @@ export default function QuizPage() {
               ({Math.round((result.score / result.total) * 100)}%)
             </span>
           </h2>
-          <div className="w-full bg-slate-200 rounded-full h-2.5 mb-3">
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mb-3">
             <div
-              className={`h-2.5 rounded-full transition-all duration-700 ${
+              className={`h-2.5 rounded-full transition-all duration-1000 ${
                 result.score >= 7
                   ? 'bg-emerald-500'
                   : result.score >= 4

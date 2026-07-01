@@ -1,8 +1,17 @@
-"""Sérialiseurs pour POST /api/courses/."""
+"""Sérialiseurs pour GET/POST /api/courses/."""
 
 from rest_framework import serializers
 
 from .models import Course
+
+
+class CourseSummarySerializer(serializers.ModelSerializer):
+    """Version compacte pour la liste bibliothèque (T-08.1)."""
+
+    class Meta:
+        model = Course
+        fields = ["id", "title", "created_at"]
+        read_only_fields = ["id", "created_at"]
 
 
 class CourseSerializer(serializers.ModelSerializer):

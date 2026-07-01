@@ -60,7 +60,7 @@ class QuizDetailView(generics.RetrieveAPIView):
 
 
 class GenerateQuizView(APIView):
-    """Génère 10 QCM à partir d'un cours déjà déposé (POST /api/courses/)."""
+    """Génère un QCM à partir d'un cours déjà déposé (POST /api/courses/)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -68,7 +68,8 @@ class GenerateQuizView(APIView):
         request=GenerateQuizSerializer,
         responses={201: QuizSerializer},
         description=(
-            "Génère 10 QCM via le LLM à partir du texte d'un cours existant. "
+            "Génère un QCM via le LLM à partir du texte d'un cours existant. "
+            "Paramètres optionnels : difficulty (easy/medium/hard), nb_questions (5–20). "
             "Le prompt et la validation JSON sont gérés par llm/services/quiz_prompt.py."
         ),
     )
@@ -104,6 +105,8 @@ class GenerateQuizView(APIView):
             questions_data = get_llm_client().generate_quiz(
                 source_text=source_text,
                 title=course.title,
+                nb_questions=serializer.validated_data["nb_questions"],
+                difficulty=serializer.validated_data["difficulty"],
             )
         except LLMError as exc:
             return Response(
@@ -170,15 +173,23 @@ class AnswerQuizView(APIView):
     )
     def post(self, request, pk: int):
         quiz = get_object_or_404(Quiz, pk=pk, user=request.user)
+        nb_questions = quiz.questions.count()
 
-        serializer = SubmitAnswersSerializer(data=request.data)
+        serializer = SubmitAnswersSerializer(
+            data=request.data,
+            nb_questions=nb_questions,
+        )
         serializer.is_valid(raise_exception=True)
         answers = serializer.validated_data["answers"]
 
         questions_by_idx = {q.index: q for q in quiz.questions.all()}
-        if len(questions_by_idx) != 10:
+        if len(questions_by_idx) != nb_questions:
             return Response(
-                {"detail": "Ce quiz n'a pas 10 questions — état incohérent."},
+                {
+                    "detail": (
+                        f"Ce quiz n'a pas {nb_questions} questions — état incohérent."
+                    )
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -209,7 +220,7 @@ class AnswerQuizView(APIView):
         return Response(
             {
                 "score": score,
-                "total": 10,
+                "total": nb_questions,
                 "details": details,
             }
         )

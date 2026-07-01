@@ -16,7 +16,7 @@ import requests
 from django.conf import settings
 
 from .base import LLMClient, LLMError
-from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, generate_quiz_validated
+from .quiz_prompt import build_system_prompt, build_user_prompt, generate_quiz_validated
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
@@ -37,13 +37,29 @@ class AnthropicLLMClient(LLMClient):
                 "LLM_BACKEND=ollama (gratuit, local) pour le développement."
             )
 
-    def generate_quiz(self, source_text: str, title: str) -> list[dict]:
-        user_content = build_user_prompt(source_text, title)
-        return generate_quiz_validated(lambda: self._call_anthropic(user_content))
+    def generate_quiz(
+        self,
+        source_text: str,
+        title: str,
+        *,
+        nb_questions: int = 10,
+        difficulty: str = "medium",
+    ) -> list[dict]:
+        user_content = build_user_prompt(
+            source_text,
+            title,
+            nb_questions=nb_questions,
+            difficulty=difficulty,
+        )
+        system_prompt = build_system_prompt(nb_questions, difficulty)
+        return generate_quiz_validated(
+            lambda: self._call_anthropic(user_content, system_prompt),
+            nb_questions=nb_questions,
+        )
 
     # ----- internals -----
 
-    def _call_anthropic(self, user_content: str) -> str:
+    def _call_anthropic(self, user_content: str, system_prompt: str) -> str:
         try:
             response = requests.post(
                 ANTHROPIC_URL,
@@ -55,7 +71,7 @@ class AnthropicLLMClient(LLMClient):
                 json={
                     "model": self.model,
                     "max_tokens": 4096,  # obligatoire chez Anthropic ; large pour 10 QCM
-                    "system": SYSTEM_PROMPT,  # consignes isolées du contenu utilisateur
+                    "system": system_prompt,  # consignes isolées du contenu utilisateur
                     "messages": [
                         {"role": "user", "content": user_content},
                     ],

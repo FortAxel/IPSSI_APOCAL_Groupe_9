@@ -12,7 +12,7 @@ import requests
 from django.conf import settings
 
 from .base import LLMClient, LLMError
-from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, generate_quiz_validated
+from .quiz_prompt import build_system_prompt, build_user_prompt, generate_quiz_validated
 
 
 class OllamaLLMClient(LLMClient):
@@ -28,23 +28,37 @@ class OllamaLLMClient(LLMClient):
         # 8B sur CPU peut dépasser largement 120 s (cf. perturbation J2 latence).
         self.timeout = timeout or settings.OLLAMA_TIMEOUT
 
-    def generate_quiz(self, source_text: str, title: str) -> list[dict]:
+    def generate_quiz(
+        self,
+        source_text: str,
+        title: str,
+        *,
+        nb_questions: int = 10,
+        difficulty: str = "medium",
+    ) -> list[dict]:
         # T-24.2 : séparation system/user via /api/chat (défense OWASP LLM-01).
-        user_content = build_user_prompt(source_text, title)
+        user_content = build_user_prompt(
+            source_text,
+            title,
+            nb_questions=nb_questions,
+            difficulty=difficulty,
+        )
+        system_prompt = build_system_prompt(nb_questions, difficulty)
         return generate_quiz_validated(
-            lambda: self._call_ollama_chat(user_content),
+            lambda: self._call_ollama_chat(user_content, system_prompt),
+            nb_questions=nb_questions,
         )
 
     # ----- internals -----
 
-    def _call_ollama_chat(self, user_content: str) -> str:
+    def _call_ollama_chat(self, user_content: str, system_prompt: str) -> str:
         try:
             response = requests.post(
                 f"{self.host}/api/chat",
                 json={
                     "model": self.model,
                     "messages": [
-                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_content},
                     ],
                     "stream": False,

@@ -17,7 +17,7 @@ import requests
 from django.conf import settings
 
 from .base import LLMClient, LLMError
-from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, generate_quiz_validated
+from .quiz_prompt import build_system_prompt, build_user_prompt, generate_quiz_validated
 
 
 class OpenAICompatibleClient(LLMClient):
@@ -48,18 +48,34 @@ class OpenAICompatibleClient(LLMClient):
                 + "Ou utilisez LLM_BACKEND=ollama (gratuit, local) pour le développement."
             )
 
-    def generate_quiz(self, source_text: str, title: str) -> list[dict]:
-        user_content = build_user_prompt(source_text, title)
-        return generate_quiz_validated(lambda: self._call(user_content))
+    def generate_quiz(
+        self,
+        source_text: str,
+        title: str,
+        *,
+        nb_questions: int = 10,
+        difficulty: str = "medium",
+    ) -> list[dict]:
+        user_content = build_user_prompt(
+            source_text,
+            title,
+            nb_questions=nb_questions,
+            difficulty=difficulty,
+        )
+        system_prompt = build_system_prompt(nb_questions, difficulty)
+        return generate_quiz_validated(
+            lambda: self._call(user_content, system_prompt),
+            nb_questions=nb_questions,
+        )
 
     # ----- internals -----
 
-    def _call(self, user_content: str) -> str:
+    def _call(self, user_content: str, system_prompt: str) -> str:
         payload = {
             "model": self.model,
             # Séparation system / user (défense de base contre l'injection, cf. J3).
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
             ],
             "temperature": 0.4,

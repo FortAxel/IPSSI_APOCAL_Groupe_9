@@ -16,7 +16,7 @@ import requests
 from django.conf import settings
 
 from .base import LLMClient, LLMError
-from .quiz_prompt import SYSTEM_PROMPT, build_user_prompt, generate_quiz_validated
+from .quiz_prompt import build_system_prompt, build_user_prompt, generate_quiz_validated
 
 # L'API Gemini place le nom du modèle dans l'URL : .../models/<MODEL>:generateContent
 GEMINI_URL_TEMPLATE = (
@@ -40,13 +40,29 @@ class GeminiLLMClient(LLMClient):
                 "(gratuit, local) pour le développement."
             )
 
-    def generate_quiz(self, source_text: str, title: str) -> list[dict]:
-        user_content = build_user_prompt(source_text, title)
-        return generate_quiz_validated(lambda: self._call_gemini(user_content))
+    def generate_quiz(
+        self,
+        source_text: str,
+        title: str,
+        *,
+        nb_questions: int = 10,
+        difficulty: str = "medium",
+    ) -> list[dict]:
+        user_content = build_user_prompt(
+            source_text,
+            title,
+            nb_questions=nb_questions,
+            difficulty=difficulty,
+        )
+        system_prompt = build_system_prompt(nb_questions, difficulty)
+        return generate_quiz_validated(
+            lambda: self._call_gemini(user_content, system_prompt),
+            nb_questions=nb_questions,
+        )
 
     # ----- internals -----
 
-    def _call_gemini(self, user_content: str) -> str:
+    def _call_gemini(self, user_content: str, system_prompt: str) -> str:
         url = GEMINI_URL_TEMPLATE.format(model=self.model)
         try:
             response = requests.post(
@@ -58,7 +74,7 @@ class GeminiLLMClient(LLMClient):
                 },
                 json={
                     # Consignes système isolées du contenu utilisateur.
-                    "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                    "system_instruction": {"parts": [{"text": system_prompt}]},
                     "contents": [{"parts": [{"text": user_content}]}],
                     "generationConfig": {
                         "temperature": 0.4,

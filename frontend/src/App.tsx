@@ -18,6 +18,7 @@ import HistoryPage from '@/pages/HistoryPage';
 import ProfilePage from '@/pages/ProfilePage';
 import DashboardPage from '@/pages/DashboardPage';
 import ReviewMistakesPage from '@/pages/ReviewMistakesPage';
+import LibraryPage from '@/pages/LibraryPage';
 import AdminPage from '@/pages/admin/AdminPage';
 import MentionsLegalesPage from '@/pages/legal/MentionsLegalesPage';
 import ConfidentialitePage from '@/pages/legal/ConfidentialitePage';
@@ -67,6 +68,14 @@ export default function App() {
                   element={
                     <RequireAuth>
                       <QuizPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="library"
+                  element={
+                    <RequireAuth>
+                      <LibraryPage />
                     </RequireAuth>
                   }
                 />

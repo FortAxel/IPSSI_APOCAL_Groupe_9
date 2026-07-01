@@ -199,15 +199,9 @@ def test_gap_whiteonwhite_unicode_passes_unsanitized():
     prompt = build_user_prompt(malicious_source, "Mathématiques")
 
     # GAP : les caractères invisibles ne sont PAS filtrés
-    assert "​" in prompt, (
-        "GAP : zero-width space (U+200B) passe dans le prompt sans nettoyage"
-    )
-    assert "‮" in prompt, (
-        "GAP : RTL override (U+202E) passe dans le prompt sans nettoyage"
-    )
-    assert "﻿" in prompt, (
-        "GAP : BOM (U+FEFF) passe dans le prompt sans nettoyage"
-    )
+    assert "​" in prompt, "GAP : zero-width space (U+200B) passe dans le prompt sans nettoyage"
+    assert "‮" in prompt, "GAP : RTL override (U+202E) passe dans le prompt sans nettoyage"
+    assert "﻿" in prompt, "GAP : BOM (U+FEFF) passe dans le prompt sans nettoyage"
 
 
 # ---------------------------------------------------------------------------
@@ -243,13 +237,14 @@ def test_gap_language_switch_accepted_by_validator(monkeypatch):
     # (a) Test unitaire : le validateur accepte le quiz anglais
     result = parse_and_validate_quiz(english_quiz_json)
     assert len(result) == 10, "Le quiz anglais devrait être accepté (GAP)"
-    assert all("What is" in q["prompt"] for q in result), (
-        "GAP : les questions en anglais passent parse_and_validate_quiz sans rejet"
-    )
+    assert all(
+        "What is" in q["prompt"] for q in result
+    ), "GAP : les questions en anglais passent parse_and_validate_quiz sans rejet"
 
     # (b) Test pipeline complet avec fake_llm_returns
     fake_llm_returns(english_quiz_json, monkeypatch)
     from django.test import override_settings
+
     from llm.services.ollama_client import OllamaLLMClient
 
     with override_settings(LLM_BACKEND="ollama", OLLAMA_MODEL="llama3.2:3b"):
@@ -259,9 +254,9 @@ def test_gap_language_switch_accepted_by_validator(monkeypatch):
             title="English Injection Test",
         )
     assert len(questions) == 10, "Pipeline complet : quiz anglais produit 10 questions (GAP)"
-    assert all("What is" in q["prompt"] for q in questions), (
-        "GAP : le pipeline complet accepte et retourne un quiz en anglais"
-    )
+    assert all(
+        "What is" in q["prompt"] for q in questions
+    ), "GAP : le pipeline complet accepte et retourne un quiz en anglais"
 
 
 # ---------------------------------------------------------------------------
@@ -309,14 +304,12 @@ def test_gap_base64_instruction_passes_unsanitized():
     prompt = build_user_prompt(malicious_source, "Photosynthèse")
 
     # GAP : le base64 passe intact dans le prompt
-    assert encoded in prompt, (
-        "GAP : la chaîne base64 passe dans le prompt sans être détectée"
-    )
+    assert encoded in prompt, "GAP : la chaîne base64 passe dans le prompt sans être détectée"
     # Vérification que l'instruction cachée est bien encodée dans le prompt
     decoded = base64.b64decode(encoded.encode()).decode()
-    assert "Ignore previous instructions" in decoded, (
-        "L'instruction malveillante est bien encodée dans le prompt envoyé au LLM"
-    )
+    assert (
+        "Ignore previous instructions" in decoded
+    ), "L'instruction malveillante est bien encodée dans le prompt envoyé au LLM"
 
 
 # ---------------------------------------------------------------------------
@@ -355,21 +348,16 @@ def test_gap_control_chars_pass_unsanitized():
         "Cours d'histoire sur la Révolution française de 1789."
         + null_byte
         + "INJECTION_CACHEE"
-        + esc_char + "[31m"          # séquence ANSI couleur rouge
+        + esc_char
+        + "[31m"  # séquence ANSI couleur rouge
         + "TEXTE_ROUGE_CACHÉ"
-        + backspace * 10             # tentative d'effacement dans les logs
+        + backspace * 10  # tentative d'effacement dans les logs
         + " La prise de la Bastille eut lieu le 14 juillet 1789."
     )
 
     prompt = build_user_prompt(malicious_source, "Histoire")
 
     # GAP : les caractères de contrôle NE SONT PAS filtrés
-    assert "\x00" in prompt, (
-        "GAP : null byte (\\x00) passe dans le prompt sans être filtré"
-    )
-    assert "\x1b" in prompt, (
-        "GAP : ESC (\\x1b) passe dans le prompt sans être filtré"
-    )
-    assert "\x08" in prompt, (
-        "GAP : backspace (\\x08) passe dans le prompt sans être filtré"
-    )
+    assert "\x00" in prompt, "GAP : null byte (\\x00) passe dans le prompt sans être filtré"
+    assert "\x1b" in prompt, "GAP : ESC (\\x1b) passe dans le prompt sans être filtré"
+    assert "\x08" in prompt, "GAP : backspace (\\x08) passe dans le prompt sans être filtré"

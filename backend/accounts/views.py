@@ -17,6 +17,7 @@ import logging
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
@@ -26,7 +27,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .emails import EmailError, send_password_reset_email, send_verification_email
-from .export import build_user_data_export
+from .export import build_user_data_export, build_zip_export
 from .models import get_or_create_profile
 from .serializers import (
     ChangePasswordSerializer,
@@ -132,9 +133,18 @@ class MeExportView(APIView):
         responses={200: OpenApiResponse(description="Export JSON structuré (téléchargement)")},
     )
     def get(self, request):
+        fmt = request.query_params.get("export_format", "json").lower()
+        exported_at = timezone.now().strftime("%Y%m%dT%H%M%SZ")
+
+        if fmt == "zip":
+            zip_bytes = build_zip_export(request.user)
+            filename = f"edututor-export-user{request.user.pk}-{exported_at}.zip"
+            response = HttpResponse(zip_bytes, content_type="application/zip")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+
         data = build_user_data_export(request.user)
         response = Response(data)
-        exported_at = timezone.now().strftime("%Y%m%dT%H%M%SZ")
         filename = f"edututor-export-user{request.user.pk}-{exported_at}.json"
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response

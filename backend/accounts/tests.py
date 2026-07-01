@@ -4,10 +4,13 @@ Ces tests servent d'exemples : signup, login, logout, accès protégé.
 Lancez : pytest accounts/
 """
 
+import io
+import zipfile as _zipfile
 from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from accounts.tokens import make_password_reset_tokens
@@ -290,3 +293,77 @@ def test_password_reset_token_max_age_is_24_hours():
     from accounts.tokens import PASSWORD_RESET_MAX_AGE
 
     assert PASSWORD_RESET_MAX_AGE == 60 * 60 * 24
+
+
+# --- T-12.2 : export ZIP ---
+
+
+@pytest.fixture
+def auth_client_export(user) -> APIClient:
+    c = APIClient()
+    token = Token.objects.create(user=user)
+    c.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+    return c
+
+
+def test_export_json_format_unchanged(auth_client_export):
+    """T-12.2 — le format JSON par défaut (sans ?format=) reste inchangé."""
+    response = auth_client_export.get("/api/accounts/me/export/")
+    assert response.status_code == 200
+    assert ".json" in response["Content-Disposition"]
+
+
+def test_export_zip_status_and_content_type(auth_client_export):
+    """T-12.2 — ?export_format=zip renvoie 200 + application/zip."""
+    response = auth_client_export.get("/api/accounts/me/export/?export_format=zip")
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/zip"
+
+
+def test_export_zip_content_disposition(auth_client_export):
+    """T-12.2 — Content-Disposition : attachment avec un nom de fichier .zip."""
+    response = auth_client_export.get("/api/accounts/me/export/?export_format=zip")
+    cd = response["Content-Disposition"]
+    assert "attachment" in cd
+    assert ".zip" in cd
+
+
+def test_export_zip_contains_three_files(auth_client_export):
+    """T-12.2 — L'archive contient quizzes.json, responses.csv et audit.json."""
+    response = auth_client_export.get("/api/accounts/me/export/?export_format=zip")
+    with _zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+        names = zf.namelist()
+    assert "quizzes.json" in names
+    assert "responses.csv" in names
+    assert "audit.json" in names
+
+
+def test_export_zip_responses_csv_includes_quiz_data(auth_client_export, user):
+    """T-12.2 — responses.csv contient les lignes des questions répondues."""
+    from courses.models import Course
+    from quizzes.models import Question, Quiz
+
+    course = Course.objects.create(user=user, title="Cours test", content="Lorem ipsum " * 20)
+    quiz = Quiz.objects.create(user=user, title="Quiz test", source_text="...", course=course)
+    Question.objects.create(
+        quiz=quiz,
+        index=1,
+        prompt="Quelle est la couleur du ciel ?",
+        options=["Rouge", "Vert", "Bleu", "Jaune"],
+        correct_index=2,
+        selected_index=1,
+    )
+
+    response = auth_client_export.get("/api/accounts/me/export/?export_format=zip")
+    with _zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+        csv_content = zf.read("responses.csv").decode()
+
+    assert "quiz_id" in csv_content
+    assert "is_correct" in csv_content
+    assert "Quelle est la couleur du ciel ?" in csv_content
+
+
+def test_export_zip_requires_auth():
+    """T-12.2 — export ZIP inaccessible sans authentification."""
+    response = APIClient().get("/api/accounts/me/export/?export_format=zip")
+    assert response.status_code in (401, 403)

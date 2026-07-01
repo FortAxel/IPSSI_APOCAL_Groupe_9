@@ -27,7 +27,7 @@ describe('ForgotPasswordPage', () => {
 
   it('envoie le lien de reset et affiche le message de confirmation', async () => {
     vi.mocked(requestPasswordReset).mockResolvedValue(
-      'Si un compte existe pour cet email, un lien de réinitialisation vient d\'être envoyé.',
+      "Si un compte existe pour cet email, un lien de réinitialisation vient d'être envoyé.",
     );
 
     renderPage();
@@ -41,8 +41,6 @@ describe('ForgotPasswordPage', () => {
       expect(requestPasswordReset).toHaveBeenCalledWith('alice@test.com');
     });
 
-    expect(
-      await screen.findByText(/si un compte existe pour cet email/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/si un compte existe pour cet email/i)).toBeInTheDocument();
   });
 });

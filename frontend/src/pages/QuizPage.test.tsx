@@ -51,7 +51,7 @@ describe('QuizPage', () => {
       })),
     });
 
-    const { container } = renderPage();
+    renderPage();
 
     await waitFor(() => {
       expect(getQuiz).toHaveBeenCalledWith(42);

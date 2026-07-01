@@ -81,7 +81,10 @@ export default function ResetPasswordPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="new-password" className="block text-sm font-medium text-slate-700 mb-1">
+                <label
+                  htmlFor="new-password"
+                  className="block text-sm font-medium text-slate-700 mb-1"
+                >
                   Nouveau mot de passe
                   <span className="text-slate-400 font-normal"> (≥ 8 caractères)</span>
                 </label>
@@ -99,7 +102,10 @@ export default function ResetPasswordPage() {
               </div>
 
               <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-slate-700 mb-1">
+                <label
+                  htmlFor="confirm-password"
+                  className="block text-sm font-medium text-slate-700 mb-1"
+                >
                   Confirmation du mot de passe
                 </label>
                 <input

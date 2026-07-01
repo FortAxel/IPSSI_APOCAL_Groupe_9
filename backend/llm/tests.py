@@ -6,8 +6,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from rest_framework.test import APIClient
 
-from quizzes.models import Quiz
 from llm.pdf_utils import MAX_PDF_SIZE_BYTES, PDFError
+from quizzes.models import Quiz
 
 pytestmark = pytest.mark.django_db
 

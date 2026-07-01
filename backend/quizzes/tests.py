@@ -190,6 +190,41 @@ def test_generate_quiz_requires_auth():
     assert response.status_code in (401, 403)
 
 
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_custom_nb_questions(auth_client, sample_course):
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {
+            "course_id": sample_course.id,
+            "nb_questions": 7,
+            "difficulty": "hard",
+        },
+        format="json",
+    )
+    assert response.status_code == 201, response.data
+    assert len(response.data["questions"]) == 7
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_rejects_nb_questions_out_of_range(auth_client, sample_course):
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id, "nb_questions": 4},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
+@override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_rejects_invalid_difficulty(auth_client, sample_course):
+    response = auth_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": sample_course.id, "difficulty": "expert"},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
 # --- T-04.2 : answer endpoint ---
 
 

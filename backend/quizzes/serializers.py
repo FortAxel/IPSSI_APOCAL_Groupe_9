@@ -47,25 +47,43 @@ class QuizSummarySerializer(serializers.ModelSerializer):
 class AnswerItemSerializer(serializers.Serializer):
     """Une réponse fournie par l'utilisateur."""
 
-    index = serializers.IntegerField(min_value=1, max_value=10)
+    index = serializers.IntegerField(min_value=1, max_value=20)
     selected_index = serializers.IntegerField(min_value=0, max_value=3)
 
 
 class SubmitAnswersSerializer(serializers.Serializer):
-    """POST /api/quizzes/<id>/answer/ — 10 réponses attendues (T-04.2)."""
+    """POST /api/quizzes/<id>/answer/ — une réponse par question du quiz."""
 
     answers = AnswerItemSerializer(many=True)
 
+    def __init__(self, *args, nb_questions: int = 10, **kwargs):
+        self.nb_questions = nb_questions
+        super().__init__(*args, **kwargs)
+
     def validate_answers(self, value):
-        if len(value) != 10:
-            raise serializers.ValidationError(f"10 réponses attendues, {len(value)} reçues.")
+        n = self.nb_questions
+        if len(value) != n:
+            raise serializers.ValidationError(f"{n} réponses attendues, {len(value)} reçues.")
         indices = sorted(a["index"] for a in value)
-        if indices != list(range(1, 11)):
-            raise serializers.ValidationError("Les indices doivent couvrir 1..10 sans doublon.")
+        if indices != list(range(1, n + 1)):
+            raise serializers.ValidationError(f"Les indices doivent couvrir 1..{n} sans doublon.")
         return value
 
 
 class GenerateQuizSerializer(serializers.Serializer):
-    """Input pour POST /api/quizzes/generate/ — génère 10 QCM depuis un cours déposé."""
+    """Input pour POST /api/quizzes/generate/ — génère un QCM depuis un cours déposé."""
+
+    DIFFICULTY_CHOICES = ("easy", "medium", "hard")
 
     course_id = serializers.IntegerField(min_value=1)
+    difficulty = serializers.ChoiceField(
+        choices=DIFFICULTY_CHOICES,
+        default="medium",
+        required=False,
+    )
+    nb_questions = serializers.IntegerField(
+        min_value=5,
+        max_value=20,
+        default=10,
+        required=False,
+    )

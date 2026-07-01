@@ -13,15 +13,21 @@ from .base import LLMClient
 class MockLLMClient(LLMClient):
     """Génère des QCM déterministes (seed sur le texte) — pour tests."""
 
-    def generate_quiz(self, source_text: str, title: str) -> list[dict]:
-        # Seed déterministe — même texte → mêmes QCM (utile en tests)
+    def generate_quiz(
+        self,
+        source_text: str,
+        title: str,
+        *,
+        nb_questions: int = 10,
+        difficulty: str = "medium",
+    ) -> list[dict]:
         rng = random.Random(hash(source_text) % 2**31)
         words = [w for w in source_text.split() if len(w) > 3][:30]
         if not words:
             words = ["concept", "notion", "élément", "principe", "exemple", "définition"]
 
         questions: list[dict] = []
-        for i in range(1, 11):
+        for i in range(1, nb_questions + 1):
             word = words[i % len(words)] if words else f"point{i}"
             correct_idx = rng.randint(0, 3)
             options = [

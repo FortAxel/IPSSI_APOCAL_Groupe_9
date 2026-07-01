@@ -5,10 +5,19 @@ import { getApiErrorMessage } from '@/api/errors';
 import type { Quiz } from '@/api/quizzes';
 
 type Phase = 'form' | 'loading' | 'result';
+type Difficulty = 'facile' | 'moyen' | 'difficile';
+
+const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  facile: '🟢 Facile',
+  moyen: '🟡 Moyen',
+  difficile: '🔴 Difficile',
+};
 
 export default function GenerateQuizPage() {
   const [title, setTitle] = useState('');
   const [sourceText, setSourceText] = useState('');
+  const [difficulty, setDifficulty] = useState<Difficulty>('moyen');
+  const [nbQuestions, setNbQuestions] = useState(10);
   const [phase, setPhase] = useState<Phase>('form');
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +49,7 @@ export default function GenerateQuizPage() {
         <div className="text-5xl mb-6 inline-block animate-spin">⏳</div>
         <h2 className="text-xl font-semibold text-slate-700 mb-2">Génération en cours…</h2>
         <p className="text-slate-500 text-sm">
-          Le LLM génère 10 QCM à partir de votre cours.
+          Le LLM génère {nbQuestions} QCM ({difficulty}) à partir de votre cours.
           <br />
           Cela peut prendre jusqu'à 5 minutes sur CPU.
         </p>
@@ -135,6 +144,46 @@ export default function GenerateQuizPage() {
           <p className="text-xs text-slate-500 mt-1">
             {sourceText.length} / 200 caractères minimum
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Difficulté</label>
+          <div className="flex gap-2">
+            {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => setDifficulty(level)}
+                className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  difficulty === level
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {DIFFICULTY_LABELS[level]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Nombre de questions&nbsp;
+            <span className="font-mono text-indigo-600">{nbQuestions}</span>
+          </label>
+          <input
+            type="range"
+            min={5}
+            max={20}
+            step={1}
+            value={nbQuestions}
+            onChange={(e) => setNbQuestions(Number(e.target.value))}
+            className="w-full accent-indigo-600"
+          />
+          <div className="flex justify-between text-xs text-slate-400 mt-1">
+            <span>5</span>
+            <span>20</span>
+          </div>
         </div>
 
         <button

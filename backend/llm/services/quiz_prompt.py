@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # on garde une limite commune pour des coûts/latences maîtrisés.
 MAX_SOURCE_CHARS = 8000
 MAX_GENERATION_ATTEMPTS = 4
-MIN_OPTION_CHARS = 10
+MIN_OPTION_CHARS = 1
 MAX_SAME_CORRECT_INDEX = 6  # > 6/10 identiques = sortie suspecte (injection)
 
 _COURSE_START = "<<<COURS_DEBUT>>>"
@@ -61,8 +61,8 @@ génération de QCM. À partir du cours fourni, tu génères exactement {nb_ques
 
 Règles ABSOLUES :
 - Exactement {nb_questions} questions.
-- Chaque question a EXACTEMENT 4 options distinctes ; chaque option est une phrase
-  complète d'au moins 10 caractères (ex. "Docker isole les processus applicatifs").
+- Chaque question a EXACTEMENT 4 options distinctes et non vides (dates, chiffres
+  ou réponses courtes acceptées, ex. "2001", "42 Go").
 - Une seule bonne réponse par question, indiquée par "correct_index" (0 à 3).
 - Répartis les correct_index sur 0, 1, 2 et 3 (environ 2–3 par indice ; jamais
   plus de 6 questions avec le même correct_index).

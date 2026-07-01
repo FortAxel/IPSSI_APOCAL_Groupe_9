@@ -250,6 +250,7 @@ def test_gap_language_switch_accepted_by_validator(monkeypatch):
     # (b) Test pipeline complet avec fake_llm_returns
     fake_llm_returns(english_quiz_json, monkeypatch)
     from django.test import override_settings
+
     from llm.services.ollama_client import OllamaLLMClient
 
     with override_settings(LLM_BACKEND="ollama", OLLAMA_MODEL="llama3.2:3b"):

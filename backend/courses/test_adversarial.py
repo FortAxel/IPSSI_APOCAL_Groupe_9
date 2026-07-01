@@ -14,7 +14,9 @@ def test_cannot_generate_quiz_from_other_users_course():
     alice = User.objects.create_user(username="alice", password="motdepasse123")
     bob = User.objects.create_user(username="bob", password="motdepasse123")
 
-    course = Course.objects.create(user=bob, title="Privé", content="Lorem ipsum dolor sit amet. " * 10)
+    course = Course.objects.create(
+        user=bob, title="Privé", content="Lorem ipsum dolor sit amet. " * 10
+    )
 
     client = APIClient()
     client.force_authenticate(user=alice)

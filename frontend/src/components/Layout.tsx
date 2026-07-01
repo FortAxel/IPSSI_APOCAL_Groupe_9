@@ -42,6 +42,12 @@ export default function Layout() {
                   Nouveau quiz
                 </Link>
                 <Link
+                  to="/library"
+                  className="text-slate-700 hover:text-indigo-600 hidden sm:inline"
+                >
+                  Bibliothèque
+                </Link>
+                <Link
                   to="/dashboard"
                   className="text-slate-700 hover:text-indigo-600 hidden sm:inline"
                 >

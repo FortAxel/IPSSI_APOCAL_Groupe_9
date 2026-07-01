@@ -35,6 +35,7 @@ DJANGO_SETTINGS_MODULE = "apocal.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "--strict-markers --tb=short -q"
 testpaths = ["accounts", "courses", "llm", "quizzes", "administration"]
+markers = ["adversarial: tests simulating adversarial access attempts and enumeration"]
 
 [tool.coverage.run]
 source = ["accounts", "courses", "llm", "quizzes", "administration"]

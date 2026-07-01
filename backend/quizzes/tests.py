@@ -381,3 +381,32 @@ def test_answer_404_for_other_users_quiz(auth_client, other_user):
         format="json",
     )
     assert response.status_code == 404
+
+
+@pytest.mark.adversarial
+def test_adversarial_enumeration_cannot_access_other_users_quiz(user, other_user):
+    """Tentative d'énumération/accès par ID → ne doit pas renvoyer d'autre user data."""
+    # Quiz appartenant à Bob
+    other_quiz = Quiz.objects.create(user=other_user, title="Secret Quiz", source_text="...")
+    for i in range(1, 11):
+        Question.objects.create(
+            quiz=other_quiz,
+            index=i,
+            prompt=f"Q{i}",
+            options=["A", "B", "C", "D"],
+            correct_index=0,
+        )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    # Accès direct au détail du quiz d'un autre utilisateur
+    resp = client.get(f"/api/quizzes/{other_quiz.id}/")
+    assert resp.status_code == 404
+
+    # Tentative d'énumération sur des IDs proches
+    for candidate in (other_quiz.id - 1, other_quiz.id + 1, other_quiz.id + 2):
+        if candidate <= 0:
+            continue
+        r = client.get(f"/api/quizzes/{candidate}/")
+        assert r.status_code in (404, 401, 403)

@@ -16,10 +16,33 @@ SAMPLE_TEXT = "Introduction au droit civil. " * 20
 
 
 @pytest.fixture
-def auth_client() -> APIClient:
-    user = User.objects.create_user(username="alice", password="motdepasse123")
+def alice() -> User:
+    return User.objects.create_user(username="alice", password="motdepasse123")
+
+
+@pytest.fixture
+def bob() -> User:
+    return User.objects.create_user(username="bob", password="motdepasse123")
+
+
+@pytest.fixture
+def alice_client(alice) -> APIClient:
     client = APIClient()
-    client.force_authenticate(user=user)
+    client.force_authenticate(user=alice)
+    return client
+
+
+@pytest.fixture
+def auth_client(alice) -> APIClient:
+    client = APIClient()
+    client.force_authenticate(user=alice)
+    return client
+
+
+@pytest.fixture
+def bob_client(bob) -> APIClient:
+    client = APIClient()
+    client.force_authenticate(user=bob)
     return client
 
 
@@ -103,3 +126,19 @@ def test_create_course_requires_auth():
         format="multipart",
     )
     assert response.status_code in (401, 403)
+
+
+@pytest.mark.adversarial
+def test_user_cannot_generate_quiz_from_other_users_course(alice, bob, bob_client):
+    course = Course.objects.create(
+        user=alice,
+        title="Privé d'Alice",
+        content="Lorem ipsum dolor sit amet. " * 20,
+    )
+
+    response = bob_client.post(
+        "/api/quizzes/generate/",
+        {"course_id": course.id},
+        format="json",
+    )
+    assert response.status_code in (403, 404)

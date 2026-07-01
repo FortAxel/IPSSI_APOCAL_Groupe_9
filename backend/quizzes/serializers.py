@@ -66,9 +66,7 @@ class SubmitAnswersSerializer(serializers.Serializer):
             raise serializers.ValidationError(f"{n} réponses attendues, {len(value)} reçues.")
         indices = sorted(a["index"] for a in value)
         if indices != list(range(1, n + 1)):
-            raise serializers.ValidationError(
-                f"Les indices doivent couvrir 1..{n} sans doublon."
-            )
+            raise serializers.ValidationError(f"Les indices doivent couvrir 1..{n} sans doublon.")
         return value
 
 

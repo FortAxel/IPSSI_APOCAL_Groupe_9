@@ -185,11 +185,7 @@ class AnswerQuizView(APIView):
         questions_by_idx = {q.index: q for q in quiz.questions.all()}
         if len(questions_by_idx) != nb_questions:
             return Response(
-                {
-                    "detail": (
-                        f"Ce quiz n'a pas {nb_questions} questions — état incohérent."
-                    )
-                },
+                {"detail": (f"Ce quiz n'a pas {nb_questions} questions — état incohérent.")},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

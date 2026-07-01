@@ -292,6 +292,82 @@ def test_answer_rejects_duplicate_index(auth_client, sample_quiz):
     assert response.status_code == 400
 
 
+# --- T-05.1 : exposition score + details[] dans la réponse answer ---
+
+
+def test_answer_exposes_score_and_details_format(auth_client, sample_quiz):
+    """T-05.1 — score et details[] sont présents avec tous les champs attendus.
+
+    Contrat pour Amine (T-05.2 page résultat) et Médy (T-05.4 UX) :
+      response.score          → int, 0..10
+      response.details        → liste de 10 objets
+      details[n].question_id  → int (PK Question)
+      details[n].index        → int, 1..10
+      details[n].selected_index → int, 0..3
+      details[n].correct_index  → int, 0..3
+      details[n].is_correct     → bool
+    """
+    answers = [{"index": i, "selected_index": 0} for i in range(1, 11)]
+    response = auth_client.post(
+        f"/api/quizzes/{sample_quiz.id}/answer/",
+        {"answers": answers},
+        format="json",
+    )
+    assert response.status_code == 200
+    data = response.data
+
+    # score
+    assert "score" in data, "La réponse doit contenir 'score'"
+    assert isinstance(data["score"], int), "score doit être un entier"
+    assert 0 <= data["score"] <= 10
+
+    # details présent et complet
+    assert "details" in data, "La réponse doit contenir 'details'"
+    assert len(data["details"]) == 10, "details doit avoir 10 entrées (une par question)"
+
+    required_keys = {"question_id", "index", "selected_index", "correct_index", "is_correct"}
+    for detail in data["details"]:
+        missing = required_keys - detail.keys()
+        assert not missing, f"Champs manquants dans details : {missing}"
+        assert isinstance(detail["question_id"], int)
+        assert isinstance(detail["is_correct"], bool)
+        assert 1 <= detail["index"] <= 10
+        assert 0 <= detail["selected_index"] <= 3
+        assert 0 <= detail["correct_index"] <= 3
+
+
+def test_answer_is_correct_reflects_answer(auth_client, sample_quiz):
+    """T-05.1 — is_correct est True si et seulement si selected == correct."""
+    # correct_index = 0 pour toutes les questions (cf. fixture sample_quiz)
+    answers = (
+        [{"index": 1, "selected_index": 0}]   # bonne
+        + [{"index": i, "selected_index": 1} for i in range(2, 11)]  # mauvaises
+    )
+    response = auth_client.post(
+        f"/api/quizzes/{sample_quiz.id}/answer/",
+        {"answers": answers},
+        format="json",
+    )
+    assert response.status_code == 200
+    details = {d["index"]: d for d in response.data["details"]}
+    assert details[1]["is_correct"] is True
+    for i in range(2, 11):
+        assert details[i]["is_correct"] is False
+
+
+def test_answer_question_id_matches_db(auth_client, sample_quiz):
+    """T-05.1 — question_id dans details correspond à la PK en base."""
+    response = auth_client.post(
+        f"/api/quizzes/{sample_quiz.id}/answer/",
+        {"answers": [{"index": i, "selected_index": 0} for i in range(1, 11)]},
+        format="json",
+    )
+    assert response.status_code == 200
+    db_ids = set(sample_quiz.questions.values_list("id", flat=True))
+    response_ids = {d["question_id"] for d in response.data["details"]}
+    assert response_ids == db_ids, "Les question_id doivent correspondre aux PKs en base"
+
+
 def test_answer_404_for_other_users_quiz(auth_client, other_user):
     other_quiz = Quiz.objects.create(user=other_user, title="Privé", source_text="...")
     for i in range(1, 11):

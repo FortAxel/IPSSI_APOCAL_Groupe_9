@@ -130,17 +130,42 @@ class GenerateQuizView(APIView):
 
 
 class AnswerQuizView(APIView):
-    """Reçoit 10 réponses, calcule le score, persiste le résultat (T-04.2)."""
+    """Reçoit 10 réponses, calcule le score, persiste le résultat (T-04.2).
+
+    Format de réponse (contrat frontend — T-05.1) :
+    {
+        "score":  <int>   score final sur 10,
+        "total":  10,
+        "details": [
+            {
+                "question_id":    <int>   PK de la Question en base,
+                "index":          <int>   position 1..10,
+                "selected_index": <int>   réponse choisie (0..3),
+                "correct_index":  <int>   bonne réponse (0..3),
+                "is_correct":     <bool>  true si selected_index == correct_index,
+            },
+            ...  (10 objets, un par question)
+        ]
+    }
+    """
 
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
         request=SubmitAnswersSerializer,
-        responses={200: OpenApiResponse(description="{ score, total, details }")},
+        responses={
+            200: OpenApiResponse(
+                description=(
+                    "{ score: int/10, total: 10, details: [ { question_id, index, "
+                    "selected_index, correct_index, is_correct } ] }"
+                )
+            )
+        },
         description=(
             "Soumet les 10 réponses et reçoit le détail de la correction. "
             "Chaque `selected_index` est enregistré sur la question ; le score /10 "
-            "est persisté sur le quiz."
+            "est persisté sur le quiz. "
+            "Voir la docstring de la classe pour le format exact de la réponse."
         ),
     )
     def post(self, request, pk: int):
@@ -169,10 +194,12 @@ class AnswerQuizView(APIView):
                 q.save(update_fields=["selected_index"])
                 details.append(
                     {
+                        "question_id": q.id,
                         "index": ans["index"],
                         "selected_index": ans["selected_index"],
                         "correct_index": q.correct_index,
-                        "correct": correct,
+                        "is_correct": correct,
+                        "correct": correct,  # alias rétrocompat
                     }
                 )
 

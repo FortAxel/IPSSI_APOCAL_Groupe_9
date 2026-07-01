@@ -5,6 +5,7 @@ Endpoints d'authentification (Lot 3 : email-identifiant + validation + reset).
     POST /api/accounts/login/                   — se connecter (par email) -> token
     POST /api/accounts/logout/                  — se déconnecter
     GET  /api/accounts/me/                       — utilisateur courant (+ email_verified)
+    GET  /api/accounts/me/export/                — export RGPD Art. 15 (JSON)
     POST /api/accounts/verify-email/             — confirmer l'email (token du lien)
     POST /api/accounts/resend-verification/      — renvoyer l'email de validation
     POST /api/accounts/password-reset/           — demander un reset (envoie un email)
@@ -16,6 +17,7 @@ import logging
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth.models import User
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -24,6 +26,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .emails import EmailError, send_password_reset_email, send_verification_email
+from .export import build_user_data_export
 from .models import get_or_create_profile
 from .serializers import (
     ChangePasswordSerializer,
@@ -116,6 +119,25 @@ class MeView(APIView):
     @extend_schema(responses={200: UserSerializer})
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class MeExportView(APIView):
+    """Exporte toutes les données personnelles de l'utilisateur connecté (RGPD Art. 15)."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["accounts"],
+        summary="Exporter mes données personnelles (JSON)",
+        responses={200: OpenApiResponse(description="Export JSON structuré (téléchargement)")},
+    )
+    def get(self, request):
+        data = build_user_data_export(request.user)
+        response = Response(data)
+        exported_at = timezone.now().strftime("%Y%m%dT%H%M%SZ")
+        filename = f"edututor-export-user{request.user.pk}-{exported_at}.json"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
 
 class VerifyEmailView(APIView):

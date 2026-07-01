@@ -2,9 +2,9 @@ name: Adversarial Tests
 
 on:
   push:
-    branches: [sprint-4]
+    branches: [sprint-4-adversarial-tests]
   pull_request:
-    branches: [sprint-4]
+    branches: [sprint-4-adversarial-tests]
 
 permissions:
   contents: read
@@ -63,4 +63,4 @@ jobs:
         run: python manage.py migrate --noinput
 
       - name: Run adversarial pytest
-        run: pytest -q -m adversarial
+        run: pytest -q -m adversarial --ds=apocal.settings

@@ -33,6 +33,13 @@ def alice_client(alice) -> APIClient:
 
 
 @pytest.fixture
+def auth_client(alice) -> APIClient:
+    client = APIClient()
+    client.force_authenticate(user=alice)
+    return client
+
+
+@pytest.fixture
 def bob_client(bob) -> APIClient:
     client = APIClient()
     client.force_authenticate(user=bob)

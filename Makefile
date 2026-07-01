@@ -4,7 +4,9 @@
 # Raccourcis pour les opérations courantes. Tapez `make help` pour la liste.
 # ============================================================================
 
-.PHONY: help dev down logs build test lint ci pull-model seed reset-db backend-shell frontend-shell
+.PHONY: help dev dev-native down logs build test lint ci pull-model seed reset-db backend-shell frontend-shell
+
+COMPOSE_NATIVE = docker compose -f docker-compose.yml -f docker-compose.native.yml
 
 help:  ## Affiche cette aide
 	@echo "IPSSI_APOCAL_KIT — Cibles Makefile disponibles :"
@@ -24,6 +26,17 @@ dev:  ## Lance tous les services en arrière-plan (postgres, ollama, backend, fr
 	@echo "   Ollama    : http://localhost:11434"
 	@echo ""
 	@echo "ℹ️  Premier lancement ? Pensez à : make pull-model"
+
+dev-native:  ## Linux + GPU : Docker Engine natif + Ollama GPU (pas Docker Desktop)
+	docker context use default
+	$(COMPOSE_NATIVE) up -d --build
+	@echo ""
+	@echo "✅ Stack native démarrée (Ollama avec GPU NVIDIA)."
+	@echo "   Frontend  : http://localhost:3000"
+	@echo "   API       : http://localhost:8000/api"
+	@echo "   Ollama    : http://localhost:11434"
+	@echo ""
+	@echo "ℹ️  Premier lancement ? : make pull-model"
 
 down:  ## Arrête tous les services (conserve les volumes)
 	docker compose down

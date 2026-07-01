@@ -45,13 +45,29 @@ class OllamaLLMClient(LLMClient):
         )
         system_prompt = build_system_prompt(nb_questions, difficulty)
         return generate_quiz_validated(
-            lambda: self._call_ollama_chat(user_content, system_prompt),
+            lambda *, retry_hint=None, attempt=1: self._call_ollama_chat(
+                user_content, system_prompt, retry_hint=retry_hint, attempt=attempt
+            ),
             nb_questions=nb_questions,
         )
 
     # ----- internals -----
 
-    def _call_ollama_chat(self, user_content: str, system_prompt: str) -> str:
+    def _call_ollama_chat(
+        self,
+        user_content: str,
+        system_prompt: str,
+        *,
+        retry_hint: str | None = None,
+        attempt: int = 1,
+    ) -> str:
+        if retry_hint:
+            user_content = (
+                f"{user_content}\n\n"
+                f"⚠️ ERREUR PRÉCÉDENTE (tentative {attempt}) : {retry_hint}\n"
+                "Corrige et renvoie UNIQUEMENT le JSON complet conforme aux règles."
+            )
+        temperature = min(0.2 + (attempt - 1) * 0.15, 0.65)
         try:
             response = requests.post(
                 f"{self.host}/api/chat",
@@ -62,7 +78,12 @@ class OllamaLLMClient(LLMClient):
                         {"role": "user", "content": user_content},
                     ],
                     "stream": False,
-                    "options": {"temperature": 0.4},
+                    "options": {
+                        "temperature": temperature,
+                        "seed": attempt * 7919,
+                        "num_ctx": settings.OLLAMA_NUM_CTX,
+                        "num_predict": settings.OLLAMA_NUM_PREDICT,
+                    },
                     "format": "json",
                 },
                 timeout=self.timeout,

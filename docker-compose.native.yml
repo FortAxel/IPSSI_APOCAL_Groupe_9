@@ -1,0 +1,26 @@
+# ============================================================================
+# Override DEV Linux — Docker Engine natif (pas Docker Desktop) + GPU NVIDIA
+# ----------------------------------------------------------------------------
+# Active `gpus: all` sur le conteneur ollama (impossible sous Docker Desktop VM).
+#
+# Prérequis :
+#   docker context use default
+#   nvidia-container-toolkit installé (nvidia-smi OK sur l'hôte)
+#
+# Lancement :
+#   make dev-native
+#   make pull-model
+# ============================================================================
+
+services:
+
+  ollama:
+    image: ollama/ollama:0.5.7
+    gpus: all
+
+  backend:
+    depends_on: !reset
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started

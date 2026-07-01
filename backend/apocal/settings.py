@@ -233,6 +233,10 @@ OLLAMA_MODEL = config("OLLAMA_MODEL", default="llama3.2:3b")
 # met facilement 2 à 5 minutes pour 10 QCM : 120 s était trop court (timeout ->
 # 502). Défaut généreux, ajustable via .env (OLLAMA_TIMEOUT).
 OLLAMA_TIMEOUT = config("OLLAMA_TIMEOUT", default=600, cast=int)
+# Fenêtre de contexte Ollama (tokens). Llama 3.2 3B supporte 128k ; 8192 suffit
+# pour system + cours + JSON 10 QCM. Sans ça, Ollama 0.5.x tronque à ~2048 → échecs.
+OLLAMA_NUM_CTX = config("OLLAMA_NUM_CTX", default=8192, cast=int)
+OLLAMA_NUM_PREDICT = config("OLLAMA_NUM_PREDICT", default=8192, cast=int)
 
 # --- OpenAI (API payante) ---
 # Laissez OPENAI_API_KEY vide en dev : le backend "openai" refusera de démarrer

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # modèle (Llama 8B ~8k tokens). Les gros modèles API tolèrent bien plus, mais
 # on garde une limite commune pour des coûts/latences maîtrisés.
 MAX_SOURCE_CHARS = 8000
-MAX_GENERATION_ATTEMPTS = 2
+MAX_GENERATION_ATTEMPTS = 4
 MIN_OPTION_CHARS = 10
 MAX_SAME_CORRECT_INDEX = 6  # > 6/10 identiques = sortie suspecte (injection)
 
@@ -61,9 +61,11 @@ génération de QCM. À partir du cours fourni, tu génères exactement {nb_ques
 
 Règles ABSOLUES :
 - Exactement {nb_questions} questions.
-- Chaque question a EXACTEMENT 4 options distinctes (longueur ≥ 10 caractères).
+- Chaque question a EXACTEMENT 4 options distinctes ; chaque option est une phrase
+  complète d'au moins 10 caractères (ex. "Docker isole les processus applicatifs").
 - Une seule bonne réponse par question, indiquée par "correct_index" (0 à 3).
-- Les bonnes réponses doivent être réparties sur les 4 indices (pas toujours A).
+- Répartis les correct_index sur 0, 1, 2 et 3 (environ 2–3 par indice ; jamais
+  plus de 6 questions avec le même correct_index).
 - Pas de markdown, pas de balises HTML, pas d'explications hors JSON.
 - Sortie = JSON STRICT et UNIQUEMENT JSON.
 
@@ -126,15 +128,23 @@ def build_full_prompt(
 
 
 def generate_quiz_validated(
-    fetch_raw: Callable[[], str],
+    fetch_raw: Callable[..., str],
     *,
     nb_questions: int = 10,
 ) -> list[dict]:
-    """Appelle le LLM puis valide ; re-prompt jusqu'à MAX_GENERATION_ATTEMPTS."""
+    """Appelle le LLM puis valide ; re-prompt avec feedback d'erreur si besoin."""
     last_error: LLMError | None = None
     for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
         try:
-            return parse_and_validate_quiz(fetch_raw(), nb_questions=nb_questions)
+            hint = str(last_error) if last_error else None
+            try:
+                raw = fetch_raw(retry_hint=hint, attempt=attempt)
+            except TypeError:
+                try:
+                    raw = fetch_raw(retry_hint=hint)
+                except TypeError:
+                    raw = fetch_raw()
+            return parse_and_validate_quiz(raw, nb_questions=nb_questions)
         except LLMError as exc:
             last_error = exc
             logger.warning(

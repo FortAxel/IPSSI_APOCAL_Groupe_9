@@ -53,7 +53,7 @@ export default function QuizPage() {
   if (loading)
     return (
       <div className="max-w-3xl mx-auto text-center py-12">
-        <span className="animate-spin text-2xl">⏳</span>
+        <span className="animate-spin inline-block text-2xl">⏳</span>
         <p className="text-slate-500 mt-3">Chargement du quiz…</p>
       </div>
     );
@@ -95,7 +95,7 @@ export default function QuizPage() {
                 : 'border-rose-500 bg-rose-50'
           }`}
         >
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">
+          <h2 className="text-3xl font-bold text-slate-900 mb-1">
             Score : {result.score} / {result.total}
             <span className="text-lg font-normal text-slate-500 ml-2">
               ({Math.round((result.score / result.total) * 100)}%)

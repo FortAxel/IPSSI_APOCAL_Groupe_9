@@ -54,6 +54,20 @@ export async function getQuiz(id: number): Promise<Quiz> {
   return data;
 }
 
+export type QuizDifficulty = 'easy' | 'medium' | 'hard';
+
+/** Génère un quiz à partir d'un cours déjà en bibliothèque. */
+export async function generateQuizFromCourse(input: {
+  course_id: number;
+  difficulty?: QuizDifficulty;
+  nb_questions?: number;
+}): Promise<Quiz> {
+  const { data } = await api.post<Quiz>('/quizzes/generate/', input, {
+    timeout: 600_000,
+  });
+  return data;
+}
+
 export async function submitAnswers(
   quizId: number,
   answers: { index: number; selected_index: number }[],

@@ -44,6 +44,22 @@ def test_generate_quiz_with_text(auth_client):
 
 
 @override_settings(LLM_BACKEND="mock")
+def test_generate_quiz_custom_nb_questions_and_difficulty(auth_client):
+    response = auth_client.post(
+        "/api/llm/generate-quiz/",
+        {
+            "title": "Cours custom",
+            "source_text": "Lorem ipsum " * 50,
+            "nb_questions": 7,
+            "difficulty": "hard",
+        },
+        format="multipart",
+    )
+    assert response.status_code == 201, response.data
+    assert len(response.data["questions"]) == 7
+
+
+@override_settings(LLM_BACKEND="mock")
 def test_generate_quiz_with_pdf_upload(auth_client, monkeypatch):
     def fake_extract_text_from_pdf(_pdf_file):
         return "Texte extrait du PDF. " * 20

@@ -10,9 +10,22 @@ class GenerateQuizSerializer(serializers.Serializer):
     requis.
     """
 
+    DIFFICULTY_CHOICES = ("easy", "medium", "hard")
+
     title = serializers.CharField(max_length=200)
     pdf = serializers.FileField(required=False)
     source_text = serializers.CharField(required=False, allow_blank=True)
+    difficulty = serializers.ChoiceField(
+        choices=DIFFICULTY_CHOICES,
+        default="medium",
+        required=False,
+    )
+    nb_questions = serializers.IntegerField(
+        min_value=5,
+        max_value=20,
+        default=10,
+        required=False,
+    )
 
     def validate(self, attrs: dict) -> dict:
         pdf = attrs.get("pdf")

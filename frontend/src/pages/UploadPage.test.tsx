@@ -60,6 +60,8 @@ describe('UploadPage', () => {
         title: 'Cours React',
         pdf: undefined,
         source_text: 'Contenu du cours. '.repeat(20),
+        difficulty: 'medium',
+        nb_questions: 10,
       });
     });
     expect(navigateMock).toHaveBeenCalledWith('/quiz/42');
@@ -92,6 +94,8 @@ describe('UploadPage', () => {
         title: 'Cours PDF',
         pdf: file,
         source_text: undefined,
+        difficulty: 'medium',
+        nb_questions: 10,
       });
     });
     expect(navigateMock).toHaveBeenCalledWith('/quiz/7');

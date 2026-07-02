@@ -39,7 +39,7 @@ export default function LibraryPage() {
           <h1 className="text-3xl font-bold text-slate-900">Ma bibliothèque</h1>
           <p className="text-slate-500 text-sm">
             {courses.length === 0
-              ? `Aucun cours pour l'instant — importez votre premier !`
+              ? 'Aucun cours pour l'instant — importez votre premier !'
               : `${courses.length} cours importé${courses.length > 1 ? 's' : ''}.`}
           </p>
         </div>

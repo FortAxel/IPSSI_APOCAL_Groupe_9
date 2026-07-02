@@ -73,7 +73,7 @@ export default function LibraryPage() {
               </div>
               <h3 className="font-semibold text-slate-900 mb-4">{course.title}</h3>
               <div className="mt-auto flex justify-end">
-                <Link to={`/quiz?course=${course.id}`} className="btn-primary text-sm">
+                <Link to={`/upload?course=${course.id}`} className="btn-primary text-sm">
                   Générer un quiz
                 </Link>
               </div>

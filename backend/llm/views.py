@@ -93,7 +93,7 @@ class PingView(APIView):
 
 
 class GenerateQuizView(APIView):
-    """Génère un quiz de 10 QCM à partir d'un PDF ou d'un texte collé."""
+    """Génère un QCM à partir d'un PDF ou d'un texte collé."""
 
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -102,9 +102,10 @@ class GenerateQuizView(APIView):
         request=GenerateQuizSerializer,
         responses={201: QuizSerializer},
         description=(
-            "Génère 10 QCM à partir d'un cours. Fournir soit `pdf` (multipart) "
-            "soit `source_text` (≥ 200 caractères). Le quiz est sauvegardé en "
-            "DB et associé à l'utilisateur connecté."
+            "Génère un QCM à partir d'un cours. Fournir soit `pdf` (multipart) "
+            "soit `source_text` (≥ 200 caractères). Paramètres optionnels : "
+            "difficulty (easy/medium/hard), nb_questions (5–20). "
+            "Le quiz est sauvegardé en DB et associé à l'utilisateur connecté."
         ),
     )
     def post(self, request):
@@ -136,7 +137,12 @@ class GenerateQuizView(APIView):
 
         # 2. Appel LLM (Ollama ou Mock)
         try:
-            questions_data = get_llm_client().generate_quiz(source_text=source_text, title=title)
+            questions_data = get_llm_client().generate_quiz(
+                source_text=source_text,
+                title=title,
+                nb_questions=serializer.validated_data["nb_questions"],
+                difficulty=serializer.validated_data["difficulty"],
+            )
         except LLMError as exc:
             return Response(
                 {"detail": f"Échec génération LLM : {exc}"},

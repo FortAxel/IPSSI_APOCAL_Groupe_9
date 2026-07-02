@@ -310,7 +310,11 @@ export default function UploadPage() {
           </div>
         </div>
 
-        <button type="submit" disabled={loading || (fromLibrary && !courseTitle)} className="btn-primary w-full">
+        <button
+          type="submit"
+          disabled={loading || (fromLibrary && !courseTitle)}
+          className="btn-primary w-full"
+        >
           {loading ? (
             <>
               <span className="animate-spin">⏳</span> Génération en cours…
@@ -319,7 +323,9 @@ export default function UploadPage() {
                 : ` (${Math.floor(elapsed / 60)} min ${elapsed % 60} s)`}
             </>
           ) : (
-            <>🚀 Générer le quiz ({nbQuestions} QCM — {DIFFICULTY_LABELS[difficulty]})</>
+            <>
+              🚀 Générer le quiz ({nbQuestions} QCM — {DIFFICULTY_LABELS[difficulty]})
+            </>
           )}
         </button>
 
